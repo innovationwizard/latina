@@ -70,13 +70,16 @@ async function uploadToLeonardo(imageBuffer, extension) {
     let foundKeyField = false;
 
     console.log('--- Received Fields from Leonardo ---');
-    if (!Array.isArray(fields)) {
-      throw new Error('Leonardo API "fields" is not an array. API may have changed.');
+    const fieldObjects = Object.values(fields ?? {});
+
+    if (fieldObjects.length === 0) {
+      throw new Error('Leonardo API "fields" object was empty.');
     }
 
-    for (const field of fields) {
+    for (const field of fieldObjects) {
       const { key, value } = field;
       const lowerKey = key.toLowerCase();
+
       console.log(`Field: "${key}" (Checking as: "${lowerKey}")`);
 
       if (requiredKeys.has(lowerKey)) {

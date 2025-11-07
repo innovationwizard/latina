@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Upload, Download, Loader2 } from 'lucide-react';
 
 // ============================================================================
@@ -15,6 +15,7 @@ export default function FurnitureEnhancer() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const enhanceTimerRef = useRef(null);
 
   // File validation constants (easily extensible)
   const ALLOWED_FORMATS = ['image/jpeg', 'image/png'];
@@ -95,6 +96,7 @@ export default function FurnitureEnhancer() {
     if (!file) return;
     
     setIsProcessing(true);
+    enhanceTimerRef.current = Date.now();
     setError(null);
 
     try {
@@ -115,8 +117,14 @@ export default function FurnitureEnhancer() {
       }
 
       setEnhancedImage(data.enhancedUrl);
+      if (enhanceTimerRef.current) {
+        const elapsedSeconds = ((Date.now() - enhanceTimerRef.current) / 1000).toFixed(2);
+        console.log(`Enhancement completed in ${elapsedSeconds} seconds.`);
+        enhanceTimerRef.current = null;
+      }
     } catch (err) {
       setError(err.message);
+      enhanceTimerRef.current = null;
     } finally {
       setIsProcessing(false);
     }
@@ -158,7 +166,7 @@ export default function FurnitureEnhancer() {
           {/* Step 1: Upload */}
           {!enhancedImage && (
             <div className="space-y-6">
-              <h1 className="text-[3.75rem] font-bold text-center text-[#1d4ed8]">
+              <h1 className="text-[2.75rem] font-bold text-center text-[#1e2a38]">
                 L A T I N A
               </h1>
               <p className="mt-2 text-lg font-light text-gray-500 text-center">

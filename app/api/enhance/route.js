@@ -9,8 +9,8 @@ const LEONARDO_API_KEY = process.env.LEONARDO_API_KEY;
 const BASE_URL = 'https://cloud.leonardo.ai/api/rest/v1';
 
 const LEONARDO_CONFIG = {
-  modelId: 'b24e16ff-06e3-43eb-8d33-4416c2d75876',
-  init_strength: 0.8,
+  modelId: 'de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3',
+  init_strength: 0.7, // Keep this high to preserve your layout
   guidance_scale: 7,
   prompt:
     'professional interior design rendering, photorealistic materials and lighting, sharp details, maintain furniture proportions',

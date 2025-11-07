@@ -4,10 +4,10 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Upload, Download, Loader2 } from 'lucide-react';
 
 // ============================================================================
-// MAIN COMPONENT: Furniture Proposal Image Enhancer
+// MAIN COMPONENT: Proposal Image Enhancer
 // ============================================================================
 
-export default function FurnitureEnhancer() {
+export default function Enhancer() {
   // State management
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);

@@ -1,5 +1,5 @@
-import FurnitureEnhancer from "./FurnitureEnhancer";
+import Enhancer from "./Enhancer";
 
 export default function Home() {
-  return <FurnitureEnhancer />;
+  return <Enhancer />;
 }

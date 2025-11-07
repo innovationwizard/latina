@@ -114,7 +114,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
     // Step 2: Upload using FormData if fields exist, otherwise direct PUT
     console.log('Uploading image...');
     
-    if (sanitizedFields) {
+    if (sanitizedFields && sanitizedFields.withinLimit && sanitizedFields.entries.length > 0) {
       // S3 POST upload with fields
       const formData = new FormData();
       const fileBlob = new Blob([imageBuffer], { type: `image/${extension}` });
@@ -137,10 +137,17 @@ async function uploadToLeonardo(imageBuffer, extension) {
         throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
       }
     } else {
+      if (sanitizedFields && !sanitizedFields.withinLimit) {
+        console.warn('Upload fields exceed AWS limit; falling back to direct PUT.');
+      }
+
       // Direct PUT upload (simpler)
       const uploadResponse = await fetch(uploadUrl, {
         method: 'PUT',
         body: imageBuffer,
+        headers: {
+          'Content-Type': `image/${extension}`,
+        },
       });
 
       if (!uploadResponse.ok && uploadResponse.status !== 204) {
@@ -199,9 +206,7 @@ function sanitizeUploadFields(fields) {
 
   let totalBytes = requiredEntries.reduce((acc, [, , bytes]) => acc + bytes, 0);
 
-  if (totalBytes > MAX_S3_POST_PRE_DATA_LENGTH) {
-    throw new Error('Required S3 upload fields exceed AWS size limits. Please retry later.');
-  }
+  const requiredWithinLimit = totalBytes <= MAX_S3_POST_PRE_DATA_LENGTH;
 
   const keptOptionalEntries = [];
 
@@ -235,6 +240,7 @@ function sanitizeUploadFields(fields) {
   return {
     entries: combinedEntries,
     totalBytes,
+    withinLimit: requiredWithinLimit && totalBytes <= MAX_S3_POST_PRE_DATA_LENGTH,
   };
 }
 

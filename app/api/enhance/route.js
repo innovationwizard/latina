@@ -8,21 +8,46 @@ import sharp from 'sharp';
 const LEONARDO_API_KEY = process.env.LEONARDO_API_KEY;
 const BASE_URL = 'https://cloud.leonardo.ai/api/rest/v1';
 
-const CONTROLNET_CANNY_ID = 'bd9c5b06-b072-466c-9c0f-1558c706c268';
+const CONTROLNET_CANNY_ID = '20660B5C-3A83-406A-B233-6AAD728A3267';
+const LEGACY_STRUCTURE_MODEL_ID = 'ac614f96-1082-45bf-be9d-757f2d31c174';
+const PROMPT =
+  'ultra-realistic, photorealistic interior design render, 8k, sharp focus, realistic textures on all surfaces, rich wood grain, soft fabric, polished marble, realistic global illumination and soft shadows';
+const NEGATIVE_PROMPT =
+  'drawn, sketch, illustration, cartoon, blurry, distorted, warped, ugly, noisy, grainy, unreal';
 
-const LEONARDO_CONFIG = {
-  modelId: 'de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3',
-  init_strength: 0.4,
-  guidance_scale: 7,
-  prompt:
-    'ultra-realistic, photorealistic interior design render, 8k, sharp focus, realistic textures on all surfaces, rich wood grain, soft fabric, polished marble, realistic global illumination and soft shadows',
-  negative_prompt:
-    'drawn, sketch, illustration, cartoon, blurry, distorted, warped, ugly, noisy, grainy, unreal',
-  num_images: 1,
-  alchemy: true,
-  photoReal: false,
-  scheduler: 'LEONARDO',
-};
+function buildGenerationPayload(imageId, width, height, mode) {
+  const isStructure = mode === 'structure';
+
+  const payload = {
+    prompt: PROMPT,
+    negative_prompt: NEGATIVE_PROMPT,
+    guidance_scale: 7,
+    num_images: 1,
+    scheduler: 'LEONARDO',
+    init_image_id: imageId,
+    width: Math.min(width, 1024),
+    height: Math.min(height, 1024),
+    init_strength: isStructure ? 0.4 : 0.7,
+    alchemy: !isStructure,
+    photoReal: false,
+  };
+
+  if (isStructure) {
+    payload.modelId = LEGACY_STRUCTURE_MODEL_ID;
+    payload.controlNet = {
+      controlnetModelId: CONTROLNET_CANNY_ID,
+      initImageId: imageId,
+      weight: 0.75,
+      preprocessor: false,
+    };
+  } else {
+    // Surfaces mode: leverage PhotoReal pipeline without ControlNet or model override
+    payload.photoReal = true;
+    payload.alchemy = true;
+  }
+
+  return payload;
+}
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -115,26 +140,17 @@ async function uploadToLeonardo(imageBuffer, extension) {
   }
 }
 
-async function generateEnhancedImage(imageId, width, height) {
+async function generateEnhancedImage(imageId, width, height, mode) {
   try {
+    const payload = buildGenerationPayload(imageId, width, height, mode);
+
     const response = await fetch(`${BASE_URL}/generations`, {
       method: 'POST',
       headers: {
         authorization: `Bearer ${LEONARDO_API_KEY}`,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        ...LEONARDO_CONFIG,
-        init_image_id: imageId,
-        width: Math.min(width, 1024),
-        height: Math.min(height, 1024),
-        controlNet: {
-          controlnetModelId: CONTROLNET_CANNY_ID,
-          initImageId: imageId,
-          weight: 0.75,
-          preprocessor: false,
-        },
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -193,6 +209,8 @@ export async function POST(request) {
 
     const formData = await request.formData();
     const file = formData.get('image');
+    const modeValue = (formData.get('mode') || 'structure').toString();
+    const mode = modeValue === 'surfaces' ? 'surfaces' : 'structure';
 
     if (!file) {
       return NextResponse.json({ error: 'No image' }, { status: 400 });
@@ -205,7 +223,7 @@ export async function POST(request) {
     const imageId = await uploadToLeonardo(buffer, 'jpg');
 
     console.log('Starting generation...');
-    const generationId = await generateEnhancedImage(imageId, 1024, 1024);
+    const generationId = await generateEnhancedImage(imageId, 1024, 1024, mode);
 
     console.log('Polling...');
     const enhancedUrl = await pollForCompletion(generationId);

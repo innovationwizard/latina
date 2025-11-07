@@ -29,7 +29,6 @@ function buildGenerationPayload(imageId, width, height, mode) {
     height: Math.min(height, 1024),
     init_strength: isStructure ? 0.4 : 0.7,
     alchemy: !isStructure,
-    photoReal: false,
   };
 
   if (isStructure) {
@@ -42,7 +41,6 @@ function buildGenerationPayload(imageId, width, height, mode) {
     };
   } else {
     payload.photoReal = true;
-    payload.alchemy = true;
   }
 
   return payload;

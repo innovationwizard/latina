@@ -15,8 +15,8 @@ export default function FurnitureEnhancer() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
-  const [mode, setMode] = useState('structure');
   const enhanceTimerRef = useRef(null);
+  const mode = 'surfaces';
 
   // File validation constants (easily extensible)
   const ALLOWED_FORMATS = ['image/jpeg', 'image/png'];
@@ -169,36 +169,12 @@ export default function FurnitureEnhancer() {
           {!enhancedImage && (
             <div className="space-y-6">
               <h1 className="text-[2.75rem] font-bold text-center text-[#1e2a38]">
-                L A T I N A S
+                L A T I N A
               </h1>
               <p className="mt-2 text-lg font-light text-gray-500 text-center">
                 AI Powered Image Enhancer
               </p>
 
-              <div className="mt-6 flex justify-center gap-2 text-sm">
-                {[
-                  { key: 'structure', label: 'Structure' },
-                  { key: 'surfaces', label: 'Surfaces' },
-                ].map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() =>
-                      setMode(option.key === 'surfaces' ? 'surfaces' : 'structure')
-                    }
-                    className={`rounded-full border px-4 py-2 transition-colors ${
-                      mode === option.key
-                        ? 'border-transparent bg-gray-900 text-white'
-                        : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
-                    }`}
-                    disabled={isProcessing}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Drop Zone */}
               <div
                 className={`
                   relative border-2 border-dashed rounded-lg p-12 text-center

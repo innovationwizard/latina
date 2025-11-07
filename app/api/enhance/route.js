@@ -27,7 +27,7 @@ function buildGenerationPayload(imageId, width, height, mode) {
     init_image_id: imageId,
     width: Math.min(width, 1024),
     height: Math.min(height, 1024),
-    init_strength: isStructure ? 0.4 : 0.7,
+    init_strength: isStructure ? 0.4 : 0.3,
     alchemy: !isStructure,
   };
 

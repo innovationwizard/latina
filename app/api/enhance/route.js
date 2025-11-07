@@ -97,29 +97,52 @@ async function uploadToLeonardo(imageBuffer, extension) {
     }
 
     const initData = await initResponse.json();
-    console.log('Got upload URL');
+    console.log('Got upload URL and image ID:', initData.uploadInitImage.id);
+    
+    const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
 
-    const { url: uploadUrl, id: imageId } = initData.uploadInitImage;
+    // Step 2: Upload using FormData if fields exist, otherwise direct PUT
+    console.log('Uploading image...');
+    
+    if (fields) {
+      // S3 POST upload with fields
+      const formData = new FormData();
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+      formData.append('file', new Blob([imageBuffer], { type: `image/${extension}` }));
+      
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      });
 
-    // Step 2: Upload image to pre-signed URL
-    console.log('Uploading image to pre-signed URL...');
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      body: imageBuffer,
-      headers: {
-        'Content-Type': `image/${extension}`,
-      },
-    });
+      if (!uploadResponse.ok && uploadResponse.status !== 204) {
+        const errorText = await uploadResponse.text();
+        console.error('Upload error:', uploadResponse.status, errorText);
+        throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
+      }
+    } else {
+      // Direct PUT upload (simpler)
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: imageBuffer,
+      });
 
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      console.error('Upload error:', uploadResponse.status, errorText);
-      throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
+      if (!uploadResponse.ok && uploadResponse.status !== 204) {
+        const errorText = await uploadResponse.text();
+        console.error('Upload error:', uploadResponse.status, errorText);
+        throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
+      }
     }
 
     console.log('Image uploaded successfully');
+    
+    // Wait a moment for Leonardo to process
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     return imageId;
-
+    
   } catch (error) {
     console.error('uploadToLeonardo error:', error);
     throw new Error(`Upload failed: ${error.message}`);

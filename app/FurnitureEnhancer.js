@@ -273,7 +273,7 @@ export default function FurnitureEnhancer() {
           {enhancedImage && (
             <div className="space-y-6">
               <h2 className="text-2xl font-light text-gray-800 text-center">
-                Your Enhanced Image
+                Your enhanced image:
               </h2>
 
               <div className="bg-white rounded-lg p-4 shadow-sm">

@@ -36,6 +36,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
       .toBuffer();
 
     console.log('Image processed, getting upload URL...');
+
     // 2. Get upload URL from Leonardo
     const initResponse = await fetch(`${BASE_URL}/init-image`, {
       method: 'POST',
@@ -53,7 +54,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
     const initData = await initResponse.json();
     const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
 
-    // 3. Keep only required fields
+    // 3. Filter ONLY for required fields (case-insensitive)
     const requiredKeys = new Set([
       'policy',
       'x-amz-credential',
@@ -62,21 +63,40 @@ async function uploadToLeonardo(imageBuffer, extension) {
       'x-amz-security-token',
       'key',
       'bucket',
-      'Content-Type',
+      'content-type',
     ]);
 
     const formData = new FormData();
+    let foundKeyField = false;
+
+    console.log('--- Received Fields from Leonardo ---');
     for (const [key, value] of Object.entries(fields || {})) {
-      if (requiredKeys.has(key)) {
+      const lowerKey = key.toLowerCase();
+      console.log(`Field: "${key}" (Checking as: "${lowerKey}")`);
+
+      if (requiredKeys.has(lowerKey)) {
         formData.append(key, value);
+        console.log('   -> Appending required field.');
+
+        if (lowerKey === 'key') {
+          foundKeyField = true;
+        }
+      } else {
+        console.log('   -> Ignoring optional field.');
       }
+    }
+    console.log('-------------------------------------');
+
+    if (!foundKeyField) {
+      console.error('CRITICAL: Leonardo did not provide a "key" field.');
+      throw new Error("Upload failed: Leonardo's API did not return a 'key' field.");
     }
 
     // 4. Append file
     formData.append('file', new Blob([processedBuffer], { type: 'image/jpeg' }), 'upload.jpg');
 
     // 5. Upload to S3
-    console.log('Uploading to S3 with required fields only...');
+    console.log('Uploading to S3 with filtered fields...');
     const uploadResponse = await fetch(uploadUrl, {
       method: 'POST',
       body: formData,

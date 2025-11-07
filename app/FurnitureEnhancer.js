@@ -158,7 +158,7 @@ export default function FurnitureEnhancer() {
           {/* Step 1: Upload */}
           {!enhancedImage && (
             <div className="space-y-6">
-              <h1 className="text-3xl font-light text-gray-800 text-center">
+              <h1 className="text-[3.75rem] font-bold text-center text-[#1d4ed8]">
                 L A T I N A
               </h1>
               <p className="mt-2 text-lg font-light text-gray-500 text-center">

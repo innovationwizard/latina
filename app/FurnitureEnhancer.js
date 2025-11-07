@@ -159,7 +159,7 @@ export default function FurnitureEnhancer() {
           {!enhancedImage && (
             <div className="space-y-6">
               <h1 className="text-3xl font-light text-gray-800 text-center">
-                Latina Interiors
+                L A T I N A
               </h1>
               <p className="mt-2 text-lg font-light text-gray-500 text-center">
                 AI Powered Image Enhancer

@@ -58,9 +58,6 @@ async function uploadToLeonardo(imageBuffer, extension) {
       const optionalEntries = [];
       const requiredKeys = new Set([
         'policy',
-      const requiredOnlyPreData = preDataBytes;
-
-        'x-amz-algorithm',
         'x-amz-credential',
         'x-amz-date',
         'x-amz-signature',
@@ -82,6 +79,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
       let preDataBytes = requiredEntries.reduce((sum, [key, value]) => {
         return sum + Buffer.byteLength(String(key)) + Buffer.byteLength(String(value)) + 4;
       }, 0);
+      const requiredOnlyPreData = preDataBytes;
 
       let maxOptionalField = { key: '', bytes: 0 };
       let maxRequiredField = { key: '', bytes: 0 };

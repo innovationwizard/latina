@@ -51,19 +51,48 @@ async function uploadToLeonardo(imageBuffer, extension) {
     }
 
     const initData = await initResponse.json();
-    const { url: uploadUrl, id: imageId } = initData.uploadInitImage;
+    const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
 
-    console.log('Got upload URL, uploading image...');
+    if (fields && Object.keys(fields).length > 0) {
+      const estimatedPreDataBytes = Object.entries(fields).reduce((sum, [key, value]) => {
+        return sum + Buffer.byteLength(String(key)) + Buffer.byteLength(String(value)) + 4;
+      }, 0);
+      console.log('Uploading via multipart POST. Estimated pre-data bytes:', estimatedPreDataBytes);
 
-    // Step 2: Direct PUT upload (simpler than FormData)
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      body: processedBuffer,
-    });
+      const formData = new FormData();
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+      formData.append(
+        'file',
+        new Blob([processedBuffer], { type: 'image/jpeg' }),
+        'upload.jpg'
+      );
 
-    if (!uploadResponse.ok && uploadResponse.status !== 204) {
-      const errorText = await uploadResponse.text();
-      throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok && uploadResponse.status !== 204) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
+      }
+    } else {
+      console.log('No multipart fields returned; using PUT upload.');
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: processedBuffer,
+        headers: {
+          'Content-Type': 'image/jpeg',
+        },
+      });
+
+      if (!uploadResponse.ok && uploadResponse.status !== 204) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
+      }
     }
 
     console.log('Upload successful, waiting for processing...');

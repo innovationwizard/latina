@@ -76,14 +76,6 @@ const LEONARDO_CONFIG = {
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
-const MAX_S3_POST_PRE_DATA_LENGTH = 20_480; // bytes, per AWS limit
-const OPTIONAL_S3_FIELD_PREFIXES = [
-  'content-type',
-  'content-disposition',
-  'cache-control',
-  'success_action_status',
-  'x-amz-meta',
-];
 
 async function uploadToLeonardo(imageBuffer, extension) {
   try {
@@ -109,49 +101,36 @@ async function uploadToLeonardo(imageBuffer, extension) {
     
     const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
 
-    const sanitizedFields = sanitizeUploadFields(fields);
+    const fieldSize = Object.entries(fields).reduce((sum, [key, value]) => {
+      return sum + Buffer.byteLength(`${key}=` + String(value)) + 10;
+    }, 0);
+    console.log('Est. pre-data bytes:', fieldSize, 'Fields:', JSON.stringify(fields));
 
-    // Step 2: Upload using FormData if fields exist, otherwise direct PUT
+    if (fieldSize > 18_000) {
+      throw new Error('Fields exceed S3 limit; contact Leonardo');
+    }
+
+    // Step 2: Upload image to pre-signed URL via multipart/form-data
     console.log('Uploading image...');
-    
-    const multipartPayload = sanitizedFields
-      ? buildS3MultipartPayload(sanitizedFields.required, sanitizedFields.optional, imageBuffer, extension)
-      : null;
 
-    if (multipartPayload) {
-      console.log(
-        `Using S3 POST upload. Pre-file payload: ${multipartPayload.preFileBytes} bytes (limit ${MAX_S3_POST_PRE_DATA_LENGTH}).`
-      );
+    const formData = new FormData();
+    const fileBlob = new Blob([imageBuffer], { type: `image/${extension}` });
 
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'POST',
-        body: multipartPayload.body,
-        headers: {
-          'Content-Type': `multipart/form-data; boundary=${multipartPayload.boundary}`,
-        },
-      });
+    Object.entries(fields).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
 
-      if (!uploadResponse.ok && uploadResponse.status !== 204) {
-        const errorText = await uploadResponse.text();
-        console.error('Upload error:', uploadResponse.status, errorText);
-        throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
-      }
-    } else {
-      console.warn('Falling back to direct PUT upload to avoid exceeding S3 POST limits.');
+    formData.append('file', fileBlob, `upload.${extension}`);
 
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: imageBuffer,
-        headers: {
-          'Content-Type': `image/${extension}`,
-        },
-      });
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      body: formData,
+    });
 
-      if (!uploadResponse.ok && uploadResponse.status !== 204) {
-        const errorText = await uploadResponse.text();
-        console.error('Upload error:', uploadResponse.status, errorText);
-        throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
-      }
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error('Upload error:', uploadResponse.status, errorText);
+      throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
     }
 
     console.log('Image uploaded successfully');
@@ -167,117 +146,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
   }
 }
 
-function sanitizeUploadFields(fields) {
-  if (!fields) {
-    return null;
-  }
-
-  const REQUIRED_KEYS = new Set([
-    'policy',
-    'x-amz-algorithm',
-    'x-amz-credential',
-    'x-amz-date',
-    'x-amz-signature',
-    'x-amz-security-token',
-    'key',
-    'bucket',
-  ]);
-
-  const requiredEntries = [];
-  const optionalEntries = [];
-
-  for (const [rawKey, rawValue] of Object.entries(fields)) {
-    const key = rawKey;
-    const lowerKey = key.toLowerCase();
-    const valueString = typeof rawValue === 'string'
-      ? rawValue.replace(/\s+/g, '')
-      : String(rawValue ?? '');
-
-    if (REQUIRED_KEYS.has(lowerKey)) {
-      requiredEntries.push([key, valueString]);
-    } else {
-      optionalEntries.push([key, valueString]);
-    }
-  }
-
-  return {
-    required: requiredEntries,
-    optional: optionalEntries,
-  };
-}
-
-function buildS3MultipartPayload(requiredEntries, optionalEntries, imageBuffer, extension) {
-  const boundary = `----LatinaUpload${Math.random().toString(16).slice(2)}`;
-  const encoder = new TextEncoder();
-
-  const makeFieldSegment = (key, value) => {
-    const segment = `--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`;
-    return {
-      segment,
-      bytes: encoder.encode(segment).length,
-      key,
-    };
-  };
-
-  const fileHeaderSegment = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="upload.${extension}"\r\nContent-Type: image/${extension}\r\n\r\n`;
-  const fileHeaderBytes = encoder.encode(fileHeaderSegment).length;
-
-  const requiredSegments = requiredEntries.map(([key, value]) => makeFieldSegment(key, value));
-  let totalPreFileBytes = requiredSegments.reduce((acc, seg) => acc + seg.bytes, 0) + fileHeaderBytes;
-
-  if (totalPreFileBytes > MAX_S3_POST_PRE_DATA_LENGTH) {
-    console.warn(
-      `Required S3 fields exceed AWS limit (${totalPreFileBytes} bytes). Cannot use POST upload.`
-    );
-    return null;
-  }
-
-  const optionalSegments = optionalEntries
-    .map(([key, value]) => makeFieldSegment(key, value))
-    .sort((a, b) => a.bytes - b.bytes);
-
-  const includedSegments = [...requiredSegments];
-
-  for (const segment of optionalSegments) {
-    const lowerKey = segment.key.toLowerCase();
-    const shouldDrop = OPTIONAL_S3_FIELD_PREFIXES.some((prefix) => lowerKey.startsWith(prefix));
-
-    if (shouldDrop) {
-      console.warn(`Dropping optional S3 field '${segment.key}' (${segment.bytes} bytes).`);
-      continue;
-    }
-
-    if (totalPreFileBytes + segment.bytes > MAX_S3_POST_PRE_DATA_LENGTH) {
-      console.warn(`Skipping optional S3 field '${segment.key}' to stay under pre-data limit.`);
-      continue;
-    }
-
-    includedSegments.push(segment);
-    totalPreFileBytes += segment.bytes;
-  }
-
-  const closingSegment = `\r\n--${boundary}--\r\n`;
-
-  const payloadParts = [
-    encoder.encode(includedSegments.map((seg) => seg.segment).join('')),
-    encoder.encode(fileHeaderSegment),
-    new Uint8Array(imageBuffer),
-    encoder.encode(closingSegment),
-  ];
-
-  if (totalPreFileBytes > MAX_S3_POST_PRE_DATA_LENGTH) {
-    console.warn(
-      `Multipart payload exceeded limit after assembly (${totalPreFileBytes} bytes). Falling back to PUT.`
-    );
-    return null;
-  }
-
-  return {
-    body: new Blob(payloadParts, { type: `multipart/form-data; boundary=${boundary}` }),
-    boundary,
-    preFileBytes: totalPreFileBytes,
-  };
-}
+// Note: No field sanitization—Leonardo expects exact field values for S3 signature
 
 async function generateEnhancedImage(imageId, width, height) {
   const response = await fetch(`${BASE_URL}/generations`, {

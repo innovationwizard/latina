@@ -78,37 +78,52 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
 
 async function uploadToLeonardo(imageBuffer, extension) {
-  // Step 1: Get upload URL
-  const initResponse = await fetch(`${BASE_URL}/init-image`, {
-    method: 'POST',
-    headers: {
-      'authorization': `Bearer ${LEONARDO_API_KEY}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ extension }),
-  });
+  try {
+    // Step 1: Get upload URL
+    console.log('Requesting upload URL from Leonardo...');
+    const initResponse = await fetch(`${BASE_URL}/init-image`, {
+      method: 'POST',
+      headers: {
+        'authorization': `Bearer ${LEONARDO_API_KEY}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ extension }),
+    });
 
-  if (!initResponse.ok) {
-    throw new Error('Failed to initialize upload');
+    if (!initResponse.ok) {
+      const errorData = await initResponse.json();
+      console.error('Leonardo init error:', errorData);
+      throw new Error(`Failed to initialize upload: ${errorData.error || initResponse.statusText}`);
+    }
+
+    const initData = await initResponse.json();
+    console.log('Got upload URL');
+
+    const { url: uploadUrl, id: imageId } = initData.uploadInitImage;
+
+    // Step 2: Upload image to pre-signed URL
+    console.log('Uploading image to pre-signed URL...');
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: imageBuffer,
+      headers: {
+        'Content-Type': `image/${extension}`,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error('Upload error:', uploadResponse.status, errorText);
+      throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
+    }
+
+    console.log('Image uploaded successfully');
+    return imageId;
+
+  } catch (error) {
+    console.error('uploadToLeonardo error:', error);
+    throw new Error(`Upload failed: ${error.message}`);
   }
-
-  const initData = await initResponse.json();
-  const { url: uploadUrl, id: imageId } = initData.uploadInitImage;
-
-  // Step 2: Upload image to pre-signed URL
-  const uploadResponse = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': `image/${extension}`,
-    },
-    body: imageBuffer,
-  });
-
-  if (!uploadResponse.ok) {
-    throw new Error('Failed to upload image');
-  }
-
-  return imageId;
 }
 
 async function generateEnhancedImage(imageId, width, height) {
@@ -175,8 +190,11 @@ async function pollForCompletion(generationId) {
 
 export async function POST(request) {
   try {
+    console.log('=== Starting enhancement request ===');
+
     // Verify API key is configured
     if (!LEONARDO_API_KEY) {
+      console.error('Leonardo API key not configured');
       return NextResponse.json(
         { error: 'Leonardo API key not configured' },
         { status: 500 }
@@ -188,13 +206,17 @@ export async function POST(request) {
     const file = formData.get('image');
 
     if (!file) {
+      console.error('No image provided in request');
       return NextResponse.json(
         { error: 'No image provided' },
         { status: 400 }
       );
     }
 
+    console.log('File received:', file.name, file.type, file.size, 'bytes');
+
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      console.error('Unsupported file type:', file.type);
       return NextResponse.json(
         { error: 'Unsupported file type. Please upload a JPG or PNG image.' },
         { status: 400 }
@@ -202,6 +224,7 @@ export async function POST(request) {
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
+      console.error('File too large:', file.size);
       return NextResponse.json(
         { error: 'File too large. Maximum size is 100MB.' },
         { status: 400 }
@@ -212,10 +235,11 @@ export async function POST(request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Get image dimensions (rough estimate from file type)
-    // For production, you might want to use sharp or jimp to get exact dimensions
-    const extension = file.type.split('/')[1];
-    
+    // Get file extension (jpg or png)
+    const extension = file.type === 'image/png' ? 'png' : 'jpg';
+
+    console.log('Processing as extension:', extension);
+
     // Default dimensions - Leonardo will maintain aspect ratio
     const width = 1024;
     const height = 768;
@@ -230,6 +254,7 @@ export async function POST(request) {
     console.log('Waiting for completion...');
     const enhancedUrl = await pollForCompletion(generationId);
 
+    console.log('Enhancement complete!');
     return NextResponse.json({ enhancedUrl });
 
   } catch (error) {

@@ -8,14 +8,15 @@ import sharp from 'sharp';
 const LEONARDO_API_KEY = process.env.LEONARDO_API_KEY;
 const BASE_URL = 'https://cloud.leonardo.ai/api/rest/v1';
 
+const CONTROLNET_CANNY_ID = 'bd9c5b06-b072-466c-9c0f-1558c706c268';
+
 const LEONARDO_CONFIG = {
-  // PhotoReal v1: omit modelId per Leonardo API requirements
-  init_strength: 0.7,
+  init_strength: 0.4,
   guidance_scale: 7,
   prompt:
-    'professional interior design rendering, photorealistic materials and lighting, sharp details, maintain furniture proportions',
+    'ultra-realistic, photorealistic interior design render, 8k, sharp focus, realistic textures on all surfaces, rich wood grain, soft fabric, polished marble, realistic global illumination and soft shadows',
   negative_prompt:
-    'distorted, warped, incorrect proportions, blurry, cartoon, illustration, oversaturated',
+    'drawn, sketch, illustration, cartoon, blurry, distorted, warped, ugly, noisy, grainy, unreal',
   num_images: 1,
   alchemy: true,
   photoReal: true,
@@ -114,27 +115,38 @@ async function uploadToLeonardo(imageBuffer, extension) {
 }
 
 async function generateEnhancedImage(imageId, width, height) {
-  const response = await fetch(`${BASE_URL}/generations`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${LEONARDO_API_KEY}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      ...LEONARDO_CONFIG,
-      init_image_id: imageId,
-      width: Math.min(width, 1024),
-      height: Math.min(height, 1024),
-    }),
-  });
+  try {
+    const response = await fetch(`${BASE_URL}/generations`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${LEONARDO_API_KEY}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...LEONARDO_CONFIG,
+        init_image_id: imageId,
+        width: Math.min(width, 1024),
+        height: Math.min(height, 1024),
+        controlNet: {
+          controlnetModelId: CONTROLNET_CANNY_ID,
+          initImageId: imageId,
+          weight: 0.75,
+          preprocessor: false,
+        },
+      }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(JSON.stringify(error));
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Generation Error:', error);
+      throw new Error(JSON.stringify(error));
+    }
+
+    const data = await response.json();
+    return data.sdGenerationJob.generationId;
+  } catch (error) {
+    throw error;
   }
-
-  const data = await response.json();
-  return data.sdGenerationJob.generationId;
 }
 
 async function pollForCompletion(generationId) {

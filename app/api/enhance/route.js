@@ -254,9 +254,5 @@ export async function POST(request) {
 }
 
 // Allow large file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-    sizeLimit: '100mb',
-  },
-};
+export const maxDuration = 60;
+export const runtime = 'nodejs';

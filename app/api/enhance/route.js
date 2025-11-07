@@ -54,7 +54,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
     const initData = await initResponse.json();
     const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
 
-    // 3. Filter ONLY for required fields (case-insensitive)
+    // 3. Filter ONLY for required fields (array-like handling)
     const requiredKeys = new Set([
       'policy',
       'x-amz-credential',
@@ -70,8 +70,24 @@ async function uploadToLeonardo(imageBuffer, extension) {
     let foundKeyField = false;
 
     console.log('--- Received Fields from Leonardo ---');
+    const fieldPairs = Object.values(fields ?? {});
 
-    for (const [key, value] of Object.entries(fields ?? {})) {
+    if (fieldPairs.length === 0) {
+      throw new Error('Leonardo API "fields" object was empty.');
+    }
+
+    for (const field of fieldPairs) {
+      if (!Array.isArray(field) || field.length !== 2) {
+        console.log('   -> Ignoring malformed field entry:', field);
+        continue;
+      }
+
+      const [key, value] = field;
+      if (typeof key !== 'string') {
+        console.log('   -> Ignoring field with non-string key:', field);
+        continue;
+      }
+
       const lowerKey = key.toLowerCase();
       console.log(`Field: "${key}" (Checking as: "${lowerKey}")`);
 
@@ -89,7 +105,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
     console.log('-------------------------------------');
 
     if (!foundKeyField) {
-      console.error('CRITICAL: Leonardo did not provide a "key" field.');
+      console.error('CRITICAL: Leonardo did not provide a "key" field in the fields object.');
       throw new Error("Upload failed: Leonardo's API did not return a 'key' field.");
     }
 

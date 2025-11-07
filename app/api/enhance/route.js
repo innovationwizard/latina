@@ -11,6 +11,7 @@ const BASE_URL = 'https://cloud.leonardo.ai/api/rest/v1';
 const CONTROLNET_CANNY_ID = 'bd9c5b06-b072-466c-9c0f-1558c706c268';
 
 const LEONARDO_CONFIG = {
+  modelId: 'de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3',
   init_strength: 0.4,
   guidance_scale: 7,
   prompt:
@@ -19,7 +20,7 @@ const LEONARDO_CONFIG = {
     'drawn, sketch, illustration, cartoon, blurry, distorted, warped, ugly, noisy, grainy, unreal',
   num_images: 1,
   alchemy: true,
-  photoReal: true,
+  photoReal: false,
   scheduler: 'LEONARDO',
 };
 

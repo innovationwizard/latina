@@ -262,7 +262,7 @@ export default function FurnitureEnhancer() {
                     Creating magic...
                   </p>
                   <p className="text-sm text-gray-400">
-                    This may take 30-60 seconds
+                    This may take any number of seconds...
                   </p>
                 </div>
               )}

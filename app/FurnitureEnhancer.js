@@ -183,7 +183,9 @@ export default function FurnitureEnhancer() {
                   <button
                     key={option.key}
                     type="button"
-                    onClick={() => setMode(option.key as 'structure' | 'surfaces')}
+                    onClick={() =>
+                      setMode(option.key === 'surfaces' ? 'surfaces' : 'structure')
+                    }
                     className={`rounded-full border px-4 py-2 transition-colors ${
                       mode === option.key
                         ? 'border-transparent bg-gray-900 text-white'

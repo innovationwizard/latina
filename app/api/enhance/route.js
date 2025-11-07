@@ -54,27 +54,50 @@ async function uploadToLeonardo(imageBuffer, extension) {
     const initData = await initResponse.json();
     const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
 
-    // 3. Append all fields exactly as provided
-    console.log(
-      'Full uploadInitImage:',
-      JSON.stringify({ uploadUrl, imageId, fields }, null, 2)
-    );
+    // 3. Filter ONLY for required fields (case-insensitive)
+    const requiredKeys = new Set([
+      'policy',
+      'x-amz-credential',
+      'x-amz-date',
+      'x-amz-signature',
+      'x-amz-security-token',
+      'key',
+      'bucket',
+      'content-type',
+    ]);
 
     const formData = new FormData();
-    Object.entries(fields ?? {}).forEach(([key, value]) => {
-      formData.append(key, value);
-      console.log(`Appended field: ${key}`);
-    });
+    let foundKeyField = false;
 
-    if (!Object.keys(fields ?? {}).some((key) => key.toLowerCase() === 'key')) {
-      console.warn('Warning: "key" field not found. S3 may reject this request.');
+    console.log('--- Received Fields from Leonardo ---');
+
+    for (const [key, value] of Object.entries(fields ?? {})) {
+      const lowerKey = key.toLowerCase();
+      console.log(`Field: "${key}" (Checking as: "${lowerKey}")`);
+
+      if (requiredKeys.has(lowerKey)) {
+        formData.append(key, value);
+        console.log('   -> Appending required field.');
+
+        if (lowerKey === 'key') {
+          foundKeyField = true;
+        }
+      } else {
+        console.log('   -> Ignoring optional field.');
+      }
+    }
+    console.log('-------------------------------------');
+
+    if (!foundKeyField) {
+      console.error('CRITICAL: Leonardo did not provide a "key" field.');
+      throw new Error("Upload failed: Leonardo's API did not return a 'key' field.");
     }
 
     // 4. Append file
     formData.append('file', new Blob([processedBuffer], { type: 'image/jpeg' }), 'upload.jpg');
 
     // 5. Upload to S3
-    console.log('Uploading...');
+    console.log('Uploading to S3 with filtered fields...');
     const uploadResponse = await fetch(uploadUrl, {
       method: 'POST',
       body: formData,
@@ -82,8 +105,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
 
     if (!uploadResponse.ok && uploadResponse.status !== 204) {
       const errorText = await uploadResponse.text();
-      console.error('Full response:', errorText);
-      throw new Error(`S3 failed: ${uploadResponse.status} - ${errorText}`);
+      throw new Error(`S3 Upload failed: ${uploadResponse.status} - ${errorText}`);
     }
 
     console.log('Upload successful, imageId:', imageId);

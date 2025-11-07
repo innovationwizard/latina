@@ -48,13 +48,30 @@ async function uploadToLeonardo(imageBuffer, extension) {
     });
 
     if (!initResponse.ok) {
-      throw new Error(`Failed to init upload: ${await initResponse.text()}`);
+      const errorText = await initResponse.text();
+      console.error(`Failed to init upload. Status: ${initResponse.status}, Body: ${errorText}`);
+      throw new Error(`Failed to init upload: ${initResponse.status}`);
     }
 
     const initData = await initResponse.json();
+
+    console.log('=== LEONARDO /init-image RESPONSE ===');
+    console.log(JSON.stringify(initData, null, 2));
+    console.log('===================================');
+
+    if (!initData.uploadInitImage) {
+      throw new Error(
+        'Leonardo API Error: The /init-image response did not contain "uploadInitImage". See full response above.'
+      );
+    }
+
     const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
 
-    // 3. Filter ONLY for required fields (array-like handling)
+    if (!fields) {
+      throw new Error('Leonardo API Error: "uploadInitImage" was present, but "fields" was missing.');
+    }
+
+    // 3. Filter ONLY for required fields (robust array-like handling)
     const requiredKeys = new Set([
       'policy',
       'x-amz-credential',
@@ -69,7 +86,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
     const formData = new FormData();
     let foundKeyField = false;
 
-    console.log('--- Received Fields from Leonardo ---');
+    console.log('--- Parsing Fields from Leonardo ---');
     const fieldPairs = Object.values(fields ?? {});
 
     if (fieldPairs.length === 0) {
@@ -102,6 +119,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
         console.log('   -> Ignoring optional field.');
       }
     }
+
     console.log('-------------------------------------');
 
     if (!foundKeyField) {
@@ -131,7 +149,7 @@ async function uploadToLeonardo(imageBuffer, extension) {
     return imageId;
   } catch (error) {
     console.error('Upload error:', error);
-    throw error;
+    throw new Error(error.message);
   }
 }
 

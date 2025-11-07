@@ -1,4 +1,19 @@
 import { NextResponse } from 'next/server';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+// ============================================================================
+// AWS S3 CONFIGURATION
+// ============================================================================
+
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'us-east-2',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
+const S3_BUCKET = process.env.S3_BUCKET_NAME || 'latina-images';
 
 // ============================================================================
 // LEONARDO AI API CONFIGURATION
@@ -13,10 +28,7 @@ const BASE_URL = 'https://cloud.leonardo.ai/api/rest/v1';
 
 const LEONARDO_CONFIG = {
   // MODEL SELECTION
-  // Phoenix model (b24e16ff-06e3-43eb-8d33-4416c2d75876) = Best for photorealism
-  // Try these alternatives if Phoenix doesn't work well:
-  // - Leonardo Kino XL: '5c232a9e-9061-4777-980a-ddc8e65647c6'
-  // - Leonardo Vision XL: '5c232a9e-9061-4777-980a-ddc8e65647c6'
+  // Phoenix model = Best for photorealism
   modelId: 'b24e16ff-06e3-43eb-8d33-4416c2d75876',
 
   // INIT STRENGTH (0.0 - 1.0)
@@ -24,49 +36,33 @@ const LEONARDO_CONFIG = {
   // 0.2 = 80% original, 20% AI enhancement (very subtle)
   // 0.3 = 70% original, 30% AI enhancement (RECOMMENDED START)
   // 0.4 = 60% original, 40% AI enhancement (more creative)
-  // 0.5 = 50/50 (may lose dimensional accuracy)
-  // START WITH 0.3 and adjust if needed
   init_strength: 0.3,
 
   // GUIDANCE SCALE (1-30)
   // How closely AI follows your prompt
   // 5 = Loose interpretation (more natural)
   // 7 = Balanced (RECOMMENDED)
-  // 10 = Strict adherence (may look artificial)
-  // Lower = better for preserving furniture proportions
+  // 10 = Strict adherence
   guidance_scale: 7,
 
-  // PROMPT
-  // What you want the AI to enhance
-  // CRITICAL: Keep it simple to preserve original design
+  // PROMPT - Keep simple to preserve furniture proportions
   prompt: 'professional interior design rendering, photorealistic materials and lighting, sharp details, maintain furniture proportions',
 
-  // NEGATIVE PROMPT  
-  // What you DON'T want
-  // Add unwanted artifacts here
+  // NEGATIVE PROMPT - What you don't want
   negative_prompt: 'distorted, warped, incorrect proportions, blurry, cartoon, illustration, oversaturated',
 
   // NUMBER OF IMAGES
-  // Always 1 for production (costs 1 generation per image)
   num_images: 1,
 
-  // ALCHEMY (true/false)
-  // Advanced rendering engine - costs more credits but better quality
+  // ALCHEMY - Better quality, costs more credits
   // true = 5 credits per image
   // false = 1 credit per image
-  // RECOMMENDED: true for client proposals
   alchemy: true,
 
-  // PHOTO REAL (true/false)  
-  // Specialized photorealism mode
-  // Only works with specific models
-  // RECOMMENDED: false initially, test later
+  // PHOTO REAL
   photoReal: false,
 
   // SCHEDULER
-  // Generation algorithm
-  // Options: 'LEONARDO', 'EULER_DISCRETE', 'DPM_SOLVER'
-  // RECOMMENDED: Leave as LEONARDO
   scheduler: 'LEONARDO',
 };
 
@@ -74,136 +70,112 @@ const LEONARDO_CONFIG = {
 // HELPER FUNCTIONS
 // ============================================================================
 
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
-const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
-
-async function uploadToLeonardo(imageBuffer, extension) {
+async function uploadToS3(imageBuffer, extension, originalFilename) {
   try {
-    // Step 1: Get upload URL
-    console.log('Requesting upload URL from Leonardo...');
-    const initResponse = await fetch(`${BASE_URL}/init-image`, {
+    const key = `init/${Date.now()}-${originalFilename}`;
+    
+    console.log('Uploading to S3:', key);
+    
+    const command = new PutObjectCommand({
+      Bucket: S3_BUCKET,
+      Key: key,
+      Body: imageBuffer,
+      ContentType: `image/${extension}`,
+    });
+
+    await s3Client.send(command);
+    
+    const publicUrl = `https://${S3_BUCKET}.s3.us-east-2.amazonaws.com/${key}`;
+    console.log('S3 upload successful:', publicUrl);
+    
+    return publicUrl;
+    
+  } catch (error) {
+    console.error('S3 upload error:', error);
+    throw new Error(`Failed to upload to S3: ${error.message}`);
+  }
+}
+
+async function generateEnhancedImage(initImageUrl, width, height) {
+  try {
+    console.log('Calling Leonardo generations API...');
+    
+    const response = await fetch(`${BASE_URL}/generations`, {
       method: 'POST',
       headers: {
         'authorization': `Bearer ${LEONARDO_API_KEY}`,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({ extension }),
-    });
-
-    if (!initResponse.ok) {
-      const errorData = await initResponse.json();
-      console.error('Leonardo init error:', errorData);
-      throw new Error(`Failed to initialize upload: ${errorData.error || initResponse.statusText}`);
-    }
-
-    const initData = await initResponse.json();
-    console.log('Got upload URL and image ID:', initData.uploadInitImage.id);
-    
-    const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
-
-    const fieldSize = Object.entries(fields).reduce((sum, [key, value]) => {
-      return sum + Buffer.byteLength(`${key}=` + String(value)) + 10;
-    }, 0);
-    console.log('Est. pre-data bytes:', fieldSize, 'Fields:', JSON.stringify(fields));
-
-    if (fieldSize > 18_000) {
-      throw new Error('Fields exceed S3 limit; contact Leonardo');
-    }
-
-    // Step 2: Upload image to pre-signed URL via multipart/form-data
-    console.log('Uploading image...');
-
-    const formData = new FormData();
-    const fileBlob = new Blob([imageBuffer], { type: `image/${extension}` });
-
-    Object.entries(fields).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
-
-    formData.append('file', fileBlob, `upload.${extension}`);
-
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      console.error('Upload error:', uploadResponse.status, errorText);
-      throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
-    }
-
-    console.log('Image uploaded successfully');
-    
-    // Wait a moment for Leonardo to process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    return imageId;
-    
-  } catch (error) {
-    console.error('uploadToLeonardo error:', error);
-    throw new Error(`Upload failed: ${error.message}`);
-  }
-}
-
-// Note: No field sanitization—Leonardo expects exact field values for S3 signature
-
-async function generateEnhancedImage(imageId, width, height) {
-  const response = await fetch(`${BASE_URL}/generations`, {
-    method: 'POST',
-    headers: {
-      'authorization': `Bearer ${LEONARDO_API_KEY}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      ...LEONARDO_CONFIG,
-      init_image_id: imageId,
-      width: Math.min(width, 2048), // Cap at 2048px
-      height: Math.min(height, 2048),
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Generation failed');
-  }
-
-  const data = await response.json();
-  return data.sdGenerationJob.generationId;
-}
-
-async function pollForCompletion(generationId) {
-  const maxAttempts = 60; // 3 minutes max (60 * 3 seconds)
-  let attempts = 0;
-
-  while (attempts < maxAttempts) {
-    const response = await fetch(`${BASE_URL}/generations/${generationId}`, {
-      headers: {
-        'authorization': `Bearer ${LEONARDO_API_KEY}`,
-      },
+      body: JSON.stringify({
+        ...LEONARDO_CONFIG,
+        init_image_type: 'URL', // Use URL instead of uploaded image ID
+        init_image_url: initImageUrl,
+        width: Math.min(width, 2048),
+        height: Math.min(height, 2048),
+      }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to check generation status');
+      const error = await response.json();
+      console.error('Leonardo generation error:', error);
+      throw new Error(error.error || 'Generation failed');
     }
 
     const data = await response.json();
-    const generation = data.generations_by_pk;
+    console.log('Generation started:', data.sdGenerationJob.generationId);
+    
+    return data.sdGenerationJob.generationId;
+    
+  } catch (error) {
+    console.error('generateEnhancedImage error:', error);
+    throw error;
+  }
+}
 
-    if (generation.status === 'COMPLETE') {
-      return generation.generated_images[0].url;
+async function pollForCompletion(generationId) {
+  const maxAttempts = 60; // 3 minutes max
+  let attempts = 0;
+
+  console.log('Polling for generation completion...');
+
+  while (attempts < maxAttempts) {
+    try {
+      const response = await fetch(`${BASE_URL}/generations/${generationId}`, {
+        headers: {
+          'authorization': `Bearer ${LEONARDO_API_KEY}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to check generation status');
+      }
+
+      const data = await response.json();
+      const generation = data.generations_by_pk;
+
+      console.log(`Poll attempt ${attempts + 1}: status = ${generation.status}`);
+
+      if (generation.status === 'COMPLETE') {
+        const imageUrl = generation.generated_images[0].url;
+        console.log('Generation complete:', imageUrl);
+        return imageUrl;
+      }
+
+      if (generation.status === 'FAILED') {
+        throw new Error('Image generation failed');
+      }
+
+      // Wait 3 seconds before next check
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      attempts++;
+      
+    } catch (error) {
+      console.error('Poll error:', error);
+      throw error;
     }
-
-    if (generation.status === 'FAILED') {
-      throw new Error('Image generation failed');
-    }
-
-    // Wait 3 seconds before next check
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    attempts++;
   }
 
-  throw new Error('Generation timed out');
+  throw new Error('Generation timed out after 3 minutes');
 }
 
 // ============================================================================
@@ -213,12 +185,20 @@ async function pollForCompletion(generationId) {
 export async function POST(request) {
   try {
     console.log('=== Starting enhancement request ===');
-
-    // Verify API key is configured
+    
+    // Verify all required environment variables
     if (!LEONARDO_API_KEY) {
-      console.error('Leonardo API key not configured');
+      console.error('LEONARDO_API_KEY not configured');
       return NextResponse.json(
         { error: 'Leonardo API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+      console.error('AWS credentials not configured');
+      return NextResponse.json(
+        { error: 'AWS credentials not configured' },
         { status: 500 }
       );
     }
@@ -228,7 +208,7 @@ export async function POST(request) {
     const file = formData.get('image');
 
     if (!file) {
-      console.error('No image provided in request');
+      console.error('No image provided');
       return NextResponse.json(
         { error: 'No image provided' },
         { status: 400 }
@@ -237,46 +217,31 @@ export async function POST(request) {
 
     console.log('File received:', file.name, file.type, file.size, 'bytes');
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      console.error('Unsupported file type:', file.type);
-      return NextResponse.json(
-        { error: 'Unsupported file type. Please upload a JPG or PNG image.' },
-        { status: 400 }
-      );
-    }
-
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      console.error('File too large:', file.size);
-      return NextResponse.json(
-        { error: 'File too large. Maximum size is 100MB.' },
-        { status: 400 }
-      );
-    }
-
     // Get image data
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Get file extension (jpg or png)
+    // Get file extension
     const extension = file.type === 'image/png' ? 'png' : 'jpg';
-
     console.log('Processing as extension:', extension);
 
-    // Default dimensions - Leonardo will maintain aspect ratio
+    // Default dimensions - Leonardo maintains aspect ratio
     const width = 1024;
     const height = 768;
 
-    // Process image
-    console.log('Uploading image to Leonardo...');
-    const imageId = await uploadToLeonardo(buffer, extension);
+    // Upload to your S3 (bypasses Leonardo's broken upload)
+    console.log('Uploading to S3...');
+    const initImageUrl = await uploadToS3(buffer, extension, file.name);
 
-    console.log('Generating enhanced image...');
-    const generationId = await generateEnhancedImage(imageId, width, height);
+    // Generate enhanced image using URL
+    console.log('Starting Leonardo generation...');
+    const generationId = await generateEnhancedImage(initImageUrl, width, height);
 
-    console.log('Waiting for completion...');
+    // Wait for completion
+    console.log('Waiting for generation to complete...');
     const enhancedUrl = await pollForCompletion(generationId);
 
-    console.log('Enhancement complete!');
+    console.log('=== Enhancement complete ===');
     return NextResponse.json({ enhancedUrl });
 
   } catch (error) {
@@ -287,3 +252,11 @@ export async function POST(request) {
     );
   }
 }
+
+// Allow large file uploads
+export const config = {
+  api: {
+    bodyParser: false,
+    sizeLimit: '100mb',
+  },
+};

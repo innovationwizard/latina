@@ -158,9 +158,12 @@ export default function FurnitureEnhancer() {
           {/* Step 1: Upload */}
           {!enhancedImage && (
             <div className="space-y-6">
-              <h1 className="text-3xl font-light text-gray-800 text-center mb-8">
-                Proposal Image Enhancer
+              <h1 className="text-3xl font-light text-gray-800 text-center">
+                Latina Interiors
               </h1>
+              <p className="mt-2 text-lg font-light text-gray-500 text-center">
+                AI Powered Image Enhancer
+              </p>
 
               {/* Drop Zone */}
               <div

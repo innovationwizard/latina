@@ -54,29 +54,127 @@ async function uploadToLeonardo(imageBuffer, extension) {
     const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
 
     if (fields && Object.keys(fields).length > 0) {
-      const estimatedPreDataBytes = Object.entries(fields).reduce((sum, [key, value]) => {
+      const requiredEntries = [];
+      const optionalEntries = [];
+      const requiredKeys = new Set([
+        'policy',
+      const requiredOnlyPreData = preDataBytes;
+
+        'x-amz-algorithm',
+        'x-amz-credential',
+        'x-amz-date',
+        'x-amz-signature',
+        'x-amz-security-token',
+        'key',
+        'bucket',
+        'Content-Type',
+      ]);
+
+      for (const [key, value] of Object.entries(fields)) {
+        const entry = [key, value];
+        if (requiredKeys.has(key) || requiredKeys.has(key.toLowerCase())) {
+          requiredEntries.push(entry);
+        } else {
+          optionalEntries.push(entry);
+        }
+      }
+
+      let preDataBytes = requiredEntries.reduce((sum, [key, value]) => {
         return sum + Buffer.byteLength(String(key)) + Buffer.byteLength(String(value)) + 4;
       }, 0);
-      console.log('Uploading via multipart POST. Estimated pre-data bytes:', estimatedPreDataBytes);
 
+      let maxOptionalField = { key: '', bytes: 0 };
+      let maxRequiredField = { key: '', bytes: 0 };
+
+      requiredEntries.forEach(([key, value]) => {
+        const bytes = Buffer.byteLength(String(key)) + Buffer.byteLength(String(value)) + 4;
+        if (bytes > maxRequiredField.bytes) {
+          maxRequiredField = { key, bytes };
+        }
+      });
+
+      const includedOptionalEntries = [];
+      optionalEntries
+        .map(([key, value]) => ({ key, value, bytes: Buffer.byteLength(String(key)) + Buffer.byteLength(String(value)) + 4 }))
+        .sort((a, b) => a.bytes - b.bytes)
+        .forEach((entry) => {
+          if (preDataBytes + entry.bytes <= 19_500) {
+            includedOptionalEntries.push(entry);
+            preDataBytes += entry.bytes;
+          } else {
+            console.warn(`Dropping optional field '${entry.key}' (${entry.bytes} bytes) to stay under pre-data limit.`);
+          }
+          if (entry.bytes > maxOptionalField.bytes) {
+            maxOptionalField = entry;
+          }
+        });
+
+      if (requiredEntries.length === 0) {
+        console.warn('Leonardo did not return recognizable required fields.');
+      }
+
+      const boundary = `----LatinaUpload${Math.random().toString(16).slice(2)}`;
+      const estimatePreFileBytes = (entries) => {
+        const segments = entries
+          .map(([key, value]) => `--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`)
+          .join('');
+        const fileHeader = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="upload.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`;
+        return Buffer.byteLength(segments + fileHeader);
+      };
+
+      console.log('Uploading via multipart POST. Estimated pre-data bytes:', preDataBytes);
+      console.log('Required-only pre-data bytes:', requiredOnlyPreData);
+      console.log('Estimated multipart pre-file bytes with boundary:', estimatePreFileBytes([
+        ...requiredEntries,
+        ...includedOptionalEntries.map(({ key, value }) => [key, value]),
+      ]));
+      if (maxRequiredField.key) {
+        console.log(`Largest required field '${maxRequiredField.key}' sized ${maxRequiredField.bytes} bytes`);
+      }
+      if (maxOptionalField.key) {
+        console.log(`Largest optional field '${maxOptionalField.key}' sized ${maxOptionalField.bytes} bytes`);
+      }
+      console.log(`Included optional fields: ${includedOptionalEntries.map(({ key }) => key).join(', ') || 'none'}`);
+
+      const maxAllowed = 20_480;
       const formData = new FormData();
-      Object.entries(fields).forEach(([key, value]) => {
+      [...requiredEntries, ...includedOptionalEntries.map(({ key, value }) => [key, value])].forEach(([key, value]) => {
         formData.append(key, value);
       });
-      formData.append(
-        'file',
-        new Blob([processedBuffer], { type: 'image/jpeg' }),
-        'upload.jpg'
-      );
+      formData.append('file', new Blob([processedBuffer], { type: 'image/jpeg' }), 'upload.jpg');
 
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData,
-      });
+      if (preDataBytes > maxAllowed) {
+        console.warn(`Pre-data bytes ${preDataBytes} exceed threshold ${maxAllowed}. Retrying with required fields only.`);
 
-      if (!uploadResponse.ok && uploadResponse.status !== 204) {
-        const errorText = await uploadResponse.text();
-        throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
+        if (requiredOnlyPreData > maxAllowed) {
+          console.error(`Required fields alone (${requiredOnlyPreData}) exceed AWS limit ${maxAllowed}. Aborting.`);
+          throw new Error('Required fields exceed S3 pre-data size limit');
+        }
+
+        const requiredOnlyForm = new FormData();
+        requiredEntries.forEach(([key, value]) => requiredOnlyForm.append(key, value));
+        requiredOnlyForm.append('file', new Blob([processedBuffer], { type: 'image/jpeg' }), 'upload.jpg');
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'POST',
+          body: requiredOnlyForm,
+        });
+
+        if (!uploadResponse.ok && uploadResponse.status !== 204) {
+          const errorText = await uploadResponse.text();
+          throw new Error(`Upload with required fields failed: ${uploadResponse.status} - ${errorText}`);
+        }
+        console.log('Upload succeeded with required fields only.');
+      } else {
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!uploadResponse.ok && uploadResponse.status !== 204) {
+          const errorText = await uploadResponse.text();
+          throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
+        }
       }
     } else {
       console.log('No multipart fields returned; using PUT upload.');

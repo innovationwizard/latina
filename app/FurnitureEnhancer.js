@@ -200,7 +200,7 @@ export default function FurnitureEnhancer() {
                       Browse to upload
                     </span>
                     <p className="text-xs text-gray-400 mt-4">
-                      JPG or PNG • Max 100MB
+                      JPG or PNG
                     </p>
                   </label>
                 ) : (

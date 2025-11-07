@@ -30,7 +30,6 @@ function buildGenerationPayload(imageId, width, height, mode) {
     init_strength: isStructure ? 0.4 : 0.7,
     alchemy: !isStructure,
     photoReal: false,
-    poseToImage: false,
   };
 
   if (isStructure) {
@@ -42,10 +41,8 @@ function buildGenerationPayload(imageId, width, height, mode) {
       preprocessor: false,
     };
   } else {
-    // Surfaces mode: leverage PhotoReal pipeline without ControlNet or model override
     payload.photoReal = true;
     payload.alchemy = true;
-    payload.poseToImage = true;
   }
 
   return payload;

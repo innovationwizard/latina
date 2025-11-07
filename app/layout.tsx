@@ -15,8 +15,8 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LATINA Image Enhancer",
-  description: "AI Powered Image Enhancer for interior design proposals",
+  title: "LATINA - AI Powered Image Enhancer",
+  description: "AI Powered Image Enhancer for Interior Design",
 };
 
 export default function RootLayout({

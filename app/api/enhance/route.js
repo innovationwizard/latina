@@ -49,89 +49,49 @@ async function uploadToLeonardo(imageBuffer, extension) {
 
     if (!initResponse.ok) {
       const errorText = await initResponse.text();
-      console.error(`Failed to init upload. Status: ${initResponse.status}, Body: ${errorText}`);
-      throw new Error(`Failed to init upload: ${initResponse.status}`);
+      throw new Error(`Failed to init upload: ${initResponse.status} - ${errorText}`);
     }
 
     const initData = await initResponse.json();
-
     console.log('=== LEONARDO /init-image RESPONSE ===');
     console.log(JSON.stringify(initData, null, 2));
     console.log('===================================');
 
     if (!initData.uploadInitImage) {
-      throw new Error(
-        'Leonardo API Error: The /init-image response did not contain "uploadInitImage". See full response above.'
-      );
+      throw new Error('API Error: The /init-image response did not contain "uploadInitImage".');
     }
 
-    const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
+    const { url: uploadUrl, id: imageId, fields: fieldsString } = initData.uploadInitImage;
 
-    if (!fields) {
-      throw new Error('Leonardo API Error: "uploadInitImage" was present, but "fields" was missing.');
+    if (typeof fieldsString !== 'string') {
+      throw new Error("API Error: 'fields' was not a string. API may have changed.");
     }
 
-    // 3. Filter ONLY for required fields (robust array-like handling)
-    const requiredKeys = new Set([
-      'policy',
-      'x-amz-credential',
-      'x-amz-date',
-      'x-amz-signature',
-      'x-amz-security-token',
-      'key',
-      'bucket',
-      'content-type',
-    ]);
+    console.log("Parsing 'fields' string into JSON object...");
+    const fieldsObject = JSON.parse(fieldsString);
 
     const formData = new FormData();
     let foundKeyField = false;
 
-    console.log('--- Parsing Fields from Leonardo ---');
-    const fieldPairs = Object.values(fields ?? {});
+    console.log('--- Appending Fields to FormData ---');
+    for (const [key, value] of Object.entries(fieldsObject)) {
+      console.log(`   -> Appending field: "${key}"`);
+      formData.append(key, value);
 
-    if (fieldPairs.length === 0) {
-      throw new Error('Leonardo API "fields" object was empty.');
-    }
-
-    for (const field of fieldPairs) {
-      if (!Array.isArray(field) || field.length !== 2) {
-        console.log('   -> Ignoring malformed field entry:', field);
-        continue;
-      }
-
-      const [key, value] = field;
-      if (typeof key !== 'string') {
-        console.log('   -> Ignoring field with non-string key:', field);
-        continue;
-      }
-
-      const lowerKey = key.toLowerCase();
-      console.log(`Field: "${key}" (Checking as: "${lowerKey}")`);
-
-      if (requiredKeys.has(lowerKey)) {
-        formData.append(key, value);
-        console.log('   -> Appending required field.');
-
-        if (lowerKey === 'key') {
-          foundKeyField = true;
-        }
-      } else {
-        console.log('   -> Ignoring optional field.');
+      if (key.toLowerCase() === 'key') {
+        foundKeyField = true;
       }
     }
-
     console.log('-------------------------------------');
 
     if (!foundKeyField) {
-      console.error('CRITICAL: Leonardo did not provide a "key" field in the fields object.');
-      throw new Error("Upload failed: Leonardo's API did not return a 'key' field.");
+      console.error('CRITICAL: The parsed "fields" object did not contain a "key".');
+      throw new Error("Upload failed: Parsed fields did not return a 'key'.");
     }
 
-    // 4. Append file
     formData.append('file', new Blob([processedBuffer], { type: 'image/jpeg' }), 'upload.jpg');
 
-    // 5. Upload to S3
-    console.log('Uploading to S3 with filtered fields...');
+    console.log('Uploading to S3 with all parsed fields...');
     const uploadResponse = await fetch(uploadUrl, {
       method: 'POST',
       body: formData,

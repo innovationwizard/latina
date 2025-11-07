@@ -114,21 +114,21 @@ async function uploadToLeonardo(imageBuffer, extension) {
     // Step 2: Upload using FormData if fields exist, otherwise direct PUT
     console.log('Uploading image...');
     
-    if (sanitizedFields && sanitizedFields.withinLimit && sanitizedFields.entries.length > 0) {
-      // S3 POST upload with fields
-      const formData = new FormData();
-      const fileBlob = new Blob([imageBuffer], { type: `image/${extension}` });
+    const multipartPayload = sanitizedFields
+      ? buildS3MultipartPayload(sanitizedFields.required, sanitizedFields.optional, imageBuffer, extension)
+      : null;
 
-      sanitizedFields.entries.forEach(([key, value]) => {
-        formData.append(key, value);
-      });
+    if (multipartPayload) {
+      console.log(
+        `Using S3 POST upload. Pre-file payload: ${multipartPayload.preFileBytes} bytes (limit ${MAX_S3_POST_PRE_DATA_LENGTH}).`
+      );
 
-      // Append file last per S3 requirements
-      formData.append('file', fileBlob, `upload.${extension}`);
-      
       const uploadResponse = await fetch(uploadUrl, {
         method: 'POST',
-        body: formData,
+        body: multipartPayload.body,
+        headers: {
+          'Content-Type': `multipart/form-data; boundary=${multipartPayload.boundary}`,
+        },
       });
 
       if (!uploadResponse.ok && uploadResponse.status !== 204) {
@@ -137,11 +137,8 @@ async function uploadToLeonardo(imageBuffer, extension) {
         throw new Error(`Failed to upload image: ${uploadResponse.statusText}`);
       }
     } else {
-      if (sanitizedFields && !sanitizedFields.withinLimit) {
-        console.warn('Upload fields exceed AWS limit; falling back to direct PUT.');
-      }
+      console.warn('Falling back to direct PUT upload to avoid exceeding S3 POST limits.');
 
-      // Direct PUT upload (simpler)
       const uploadResponse = await fetch(uploadUrl, {
         method: 'PUT',
         body: imageBuffer,
@@ -195,52 +192,90 @@ function sanitizeUploadFields(fields) {
     const valueString = typeof rawValue === 'string'
       ? rawValue.replace(/\s+/g, '')
       : String(rawValue ?? '');
-    const bytes = Buffer.byteLength(key) + Buffer.byteLength(valueString) + 2;
 
     if (REQUIRED_KEYS.has(lowerKey)) {
-      requiredEntries.push([key, valueString, bytes]);
+      requiredEntries.push([key, valueString]);
     } else {
-      optionalEntries.push([key, valueString, bytes]);
+      optionalEntries.push([key, valueString]);
     }
   }
 
-  let totalBytes = requiredEntries.reduce((acc, [, , bytes]) => acc + bytes, 0);
+  return {
+    required: requiredEntries,
+    optional: optionalEntries,
+  };
+}
 
-  const requiredWithinLimit = totalBytes <= MAX_S3_POST_PRE_DATA_LENGTH;
+function buildS3MultipartPayload(requiredEntries, optionalEntries, imageBuffer, extension) {
+  const boundary = `----LatinaUpload${Math.random().toString(16).slice(2)}`;
+  const encoder = new TextEncoder();
 
-  const keptOptionalEntries = [];
+  const makeFieldSegment = (key, value) => {
+    const segment = `--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`;
+    return {
+      segment,
+      bytes: encoder.encode(segment).length,
+      key,
+    };
+  };
 
-  optionalEntries
-    .sort((a, b) => a[2] - b[2])
-    .forEach(([key, value, bytes]) => {
-      const lowerKey = key.toLowerCase();
-      const shouldDrop = OPTIONAL_S3_FIELD_PREFIXES.some((prefix) => lowerKey.startsWith(prefix));
+  const fileHeaderSegment = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="upload.${extension}"\r\nContent-Type: image/${extension}\r\n\r\n`;
+  const fileHeaderBytes = encoder.encode(fileHeaderSegment).length;
 
-      if (shouldDrop) {
-        console.warn(`Dropping optional S3 field '${key}' (${bytes} bytes) to reduce payload.`);
-        return;
-      }
+  const requiredSegments = requiredEntries.map(([key, value]) => makeFieldSegment(key, value));
+  let totalPreFileBytes = requiredSegments.reduce((acc, seg) => acc + seg.bytes, 0) + fileHeaderBytes;
 
-      if (totalBytes + bytes > MAX_S3_POST_PRE_DATA_LENGTH) {
-        console.warn(`Skipping optional S3 field '${key}' to stay under pre-data limit.`);
-        return;
-      }
+  if (totalPreFileBytes > MAX_S3_POST_PRE_DATA_LENGTH) {
+    console.warn(
+      `Required S3 fields exceed AWS limit (${totalPreFileBytes} bytes). Cannot use POST upload.`
+    );
+    return null;
+  }
 
-      keptOptionalEntries.push([key, value, bytes]);
-      totalBytes += bytes;
-    });
+  const optionalSegments = optionalEntries
+    .map(([key, value]) => makeFieldSegment(key, value))
+    .sort((a, b) => a.bytes - b.bytes);
 
-  console.log(`Upload field payload size: ${totalBytes} bytes (limit ${MAX_S3_POST_PRE_DATA_LENGTH}).`);
+  const includedSegments = [...requiredSegments];
 
-  const combinedEntries = [
-    ...requiredEntries,
-    ...keptOptionalEntries,
-  ].map(([key, value]) => [key, value]);
+  for (const segment of optionalSegments) {
+    const lowerKey = segment.key.toLowerCase();
+    const shouldDrop = OPTIONAL_S3_FIELD_PREFIXES.some((prefix) => lowerKey.startsWith(prefix));
+
+    if (shouldDrop) {
+      console.warn(`Dropping optional S3 field '${segment.key}' (${segment.bytes} bytes).`);
+      continue;
+    }
+
+    if (totalPreFileBytes + segment.bytes > MAX_S3_POST_PRE_DATA_LENGTH) {
+      console.warn(`Skipping optional S3 field '${segment.key}' to stay under pre-data limit.`);
+      continue;
+    }
+
+    includedSegments.push(segment);
+    totalPreFileBytes += segment.bytes;
+  }
+
+  const closingSegment = `\r\n--${boundary}--\r\n`;
+
+  const payloadParts = [
+    encoder.encode(includedSegments.map((seg) => seg.segment).join('')),
+    encoder.encode(fileHeaderSegment),
+    new Uint8Array(imageBuffer),
+    encoder.encode(closingSegment),
+  ];
+
+  if (totalPreFileBytes > MAX_S3_POST_PRE_DATA_LENGTH) {
+    console.warn(
+      `Multipart payload exceeded limit after assembly (${totalPreFileBytes} bytes). Falling back to PUT.`
+    );
+    return null;
+  }
 
   return {
-    entries: combinedEntries,
-    totalBytes,
-    withinLimit: requiredWithinLimit && totalBytes <= MAX_S3_POST_PRE_DATA_LENGTH,
+    body: new Blob(payloadParts, { type: `multipart/form-data; boundary=${boundary}` }),
+    boundary,
+    preFileBytes: totalPreFileBytes,
   };
 }
 

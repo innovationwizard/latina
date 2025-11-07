@@ -9,8 +9,8 @@ const LEONARDO_API_KEY = process.env.LEONARDO_API_KEY;
 const BASE_URL = 'https://cloud.leonardo.ai/api/rest/v1';
 
 const LEONARDO_CONFIG = {
-  modelId: 'de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3',
-  init_strength: 0.7, // Keep this high to preserve your layout
+  // PhotoReal v1: omit modelId per Leonardo API requirements
+  init_strength: 0.7,
   guidance_scale: 7,
   prompt:
     'professional interior design rendering, photorealistic materials and lighting, sharp details, maintain furniture proportions',

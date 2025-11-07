@@ -140,6 +140,9 @@ async function uploadToLeonardo(imageBuffer, extension) {
 async function generateEnhancedImage(imageId, width, height, mode) {
   try {
     const payload = buildGenerationPayload(imageId, width, height, mode);
+    console.log('=== GENERATION PAYLOAD ===');
+    console.log(JSON.stringify(payload, null, 2));
+    console.log('==========================');
 
     const response = await fetch(`${BASE_URL}/generations`, {
       method: 'POST',

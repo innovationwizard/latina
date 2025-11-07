@@ -76,6 +76,14 @@ const LEONARDO_CONFIG = {
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
+const MAX_S3_POST_PRE_DATA_LENGTH = 20_480; // bytes, per AWS limit
+const OPTIONAL_S3_FIELD_PREFIXES = [
+  'content-type',
+  'content-disposition',
+  'cache-control',
+  'success_action_status',
+  'x-amz-meta',
+];
 
 async function uploadToLeonardo(imageBuffer, extension) {
   try {
@@ -101,16 +109,22 @@ async function uploadToLeonardo(imageBuffer, extension) {
     
     const { url: uploadUrl, id: imageId, fields } = initData.uploadInitImage;
 
+    const sanitizedFields = sanitizeUploadFields(fields);
+
     // Step 2: Upload using FormData if fields exist, otherwise direct PUT
     console.log('Uploading image...');
     
-    if (fields) {
+    if (sanitizedFields) {
       // S3 POST upload with fields
       const formData = new FormData();
-      Object.entries(fields).forEach(([key, value]) => {
+      const fileBlob = new Blob([imageBuffer], { type: `image/${extension}` });
+
+      sanitizedFields.entries.forEach(([key, value]) => {
         formData.append(key, value);
       });
-      formData.append('file', new Blob([imageBuffer], { type: `image/${extension}` }));
+
+      // Append file last per S3 requirements
+      formData.append('file', fileBlob, `upload.${extension}`);
       
       const uploadResponse = await fetch(uploadUrl, {
         method: 'POST',
@@ -147,6 +161,81 @@ async function uploadToLeonardo(imageBuffer, extension) {
     console.error('uploadToLeonardo error:', error);
     throw new Error(`Upload failed: ${error.message}`);
   }
+}
+
+function sanitizeUploadFields(fields) {
+  if (!fields) {
+    return null;
+  }
+
+  const REQUIRED_KEYS = new Set([
+    'policy',
+    'x-amz-algorithm',
+    'x-amz-credential',
+    'x-amz-date',
+    'x-amz-signature',
+    'x-amz-security-token',
+    'key',
+    'bucket',
+  ]);
+
+  const requiredEntries = [];
+  const optionalEntries = [];
+
+  for (const [rawKey, rawValue] of Object.entries(fields)) {
+    const key = rawKey;
+    const lowerKey = key.toLowerCase();
+    const valueString = typeof rawValue === 'string'
+      ? rawValue.replace(/\s+/g, '')
+      : String(rawValue ?? '');
+    const bytes = Buffer.byteLength(key) + Buffer.byteLength(valueString) + 2;
+
+    if (REQUIRED_KEYS.has(lowerKey)) {
+      requiredEntries.push([key, valueString, bytes]);
+    } else {
+      optionalEntries.push([key, valueString, bytes]);
+    }
+  }
+
+  let totalBytes = requiredEntries.reduce((acc, [, , bytes]) => acc + bytes, 0);
+
+  if (totalBytes > MAX_S3_POST_PRE_DATA_LENGTH) {
+    throw new Error('Required S3 upload fields exceed AWS size limits. Please retry later.');
+  }
+
+  const keptOptionalEntries = [];
+
+  optionalEntries
+    .sort((a, b) => a[2] - b[2])
+    .forEach(([key, value, bytes]) => {
+      const lowerKey = key.toLowerCase();
+      const shouldDrop = OPTIONAL_S3_FIELD_PREFIXES.some((prefix) => lowerKey.startsWith(prefix));
+
+      if (shouldDrop) {
+        console.warn(`Dropping optional S3 field '${key}' (${bytes} bytes) to reduce payload.`);
+        return;
+      }
+
+      if (totalBytes + bytes > MAX_S3_POST_PRE_DATA_LENGTH) {
+        console.warn(`Skipping optional S3 field '${key}' to stay under pre-data limit.`);
+        return;
+      }
+
+      keptOptionalEntries.push([key, value, bytes]);
+      totalBytes += bytes;
+    });
+
+  console.log(`Upload field payload size: ${totalBytes} bytes (limit ${MAX_S3_POST_PRE_DATA_LENGTH}).`);
+
+  const combinedEntries = [
+    ...requiredEntries,
+    ...keptOptionalEntries,
+  ].map(([key, value]) => [key, value]);
+
+  return {
+    entries: combinedEntries,
+    totalBytes,
+  };
 }
 
 async function generateEnhancedImage(imageId, width, height) {

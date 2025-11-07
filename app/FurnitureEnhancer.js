@@ -15,7 +15,7 @@ export default function FurnitureEnhancer() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
-  const [mode, setMode] = useState<'structure' | 'surfaces'>('structure');
+  const [mode, setMode] = useState('structure');
   const enhanceTimerRef = useRef(null);
 
   // File validation constants (easily extensible)

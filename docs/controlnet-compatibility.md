@@ -23,3 +23,82 @@ Here are the hard facts:
 | Model IDs Needed         | SDXL / XL                 | SD 1.5 / 2.0  |
 
 Your routing logic and diagnosis—that combining Alchemy or PhotoReal V2 with ControlNet triggers hard API conflicts—is absolutely validated by Leonardo documentation, help guides, and community discussions. Following this logic is required for compatibility.
+
+## Realism vs. Structural Control
+
+You cannot have both maximum realism and maximum structural control simultaneously via the API. Choose a path based on your priority:
+
+### Option 1: Prioritize Realism (Alchemy Pipeline)
+- **Goal:** Maximum photorealism, textures, and lighting.
+- **Method:** Use the PhotoReal pipeline.
+- **Trade-off:** ControlNet cannot be used. You must rely on `init_strength` to preserve layout. A high value (≈0.7–0.8) keeps the layout but may retain the “drawn” look. A lower value (≈0.4) enhances realism but risks distorting furniture.
+
+```javascript
+// CONFIG FOR MAX REALISM
+const LEONARDO_CONFIG = {
+  init_strength: 0.7,
+  guidance_scale: 7,
+  prompt: 'ultra-realistic, photorealistic interior design render, 8k...',
+  negative_prompt: 'drawn, sketch, illustration, cartoon, blurry...',
+  num_images: 1,
+  alchemy: true,
+  photoReal: true,
+  scheduler: 'LEONARDO',
+};
+
+async function generateEnhancedImage(imageId, width, height) {
+  const response = await fetch(`${BASE_URL}/generations`, {
+    method: 'POST',
+    headers: { /* ... */ },
+    body: JSON.stringify({
+      ...LEONARDO_CONFIG,
+      init_image_id: imageId,
+      width: Math.min(width, 1024),
+      height: Math.min(height, 1024),
+      // NO ControlNet or cannyToImage parameters
+    }),
+  });
+  // ...
+}
+```
+
+### Option 2: Prioritize Structure (Legacy Pipeline)
+- **Goal:** Guarantee preservation of space and furniture layout.
+- **Method:** Use a legacy SD 1.5 model with ControlNet.
+- **Trade-off:** Final realism, textures, and lighting will not match Alchemy/SDXL models.
+
+```javascript
+// CONFIG FOR MAX STRUCTURE
+const CONTROLNET_CANNY_ID = '20660B5C-3A83-406A-B233-6AAD728A3267'; // SD 1.5 Canny
+
+const LEONARDO_CONFIG = {
+  modelId: 'ac614f96-1082-45bf-be9d-757f2d31c174', // DreamShaper v8
+  init_strength: 0.4,
+  guidance_scale: 7,
+  prompt: 'ultra-realistic, photorealistic interior design render, 8k...',
+  negative_prompt: 'drawn, sketch, illustration, cartoon, blurry...',
+  num_images: 1,
+  alchemy: false,
+  scheduler: 'LEONARDO',
+};
+
+async function generateEnhancedImage(imageId, width, height) {
+  const response = await fetch(`${BASE_URL}/generations`, {
+    method: 'POST',
+    headers: { /* ... */ },
+    body: JSON.stringify({
+      ...LEONARDO_CONFIG,
+      init_image_id: imageId,
+      width: Math.min(width, 1024),
+      height: Math.min(height, 1024),
+      controlNet: {
+        controlnetModelId: CONTROLNET_CANNY_ID,
+        initImageId: imageId,
+        weight: 0.75,
+        preprocessor: false,
+      },
+    }),
+  });
+  // ...
+}
+```

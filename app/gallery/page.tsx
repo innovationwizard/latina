@@ -116,8 +116,9 @@ export default function GalleryPage() {
               <input
                 type="text"
                 id="cognitoPoolId"
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
-                placeholder="us-east-1:xxxx-xxxx-xxxx"
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm focus:outline-none sm:text-sm"
+                value={process.env.NEXT_PUBLIC_COGNITO_POOL_ID || ''}
+                readOnly
               />
             </div>
             <div>
@@ -130,8 +131,9 @@ export default function GalleryPage() {
               <input
                 type="text"
                 id="s3BucketName"
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
-                placeholder="latina-uploads"
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm focus:outline-none sm:text-sm"
+                value={process.env.NEXT_PUBLIC_S3_BUCKET || ''}
+                readOnly
               />
             </div>
             <div>
@@ -144,8 +146,9 @@ export default function GalleryPage() {
               <input
                 type="text"
                 id="s3Region"
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
-                placeholder="us-east-2"
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm focus:outline-none sm:text-sm"
+                value={process.env.NEXT_PUBLIC_S3_REGION || ''}
+                readOnly
               />
             </div>
           </div>
@@ -159,8 +162,9 @@ export default function GalleryPage() {
             <input
               type="text"
               id="s3Prefix"
-              className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
-              placeholder="uploads/"
+              className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm focus:outline-none sm:text-sm"
+              value={process.env.NEXT_PUBLIC_S3_PREFIX || ''}
+              readOnly
             />
           </div>
 

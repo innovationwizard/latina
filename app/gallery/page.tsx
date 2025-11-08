@@ -6,18 +6,17 @@ export const metadata = {
     "Securely browse thumbnails stored in your Latina uploads S3 bucket using Cognito Identity credentials.",
 };
 
-const galleryScript = `const loadGalleryBtn=document.getElementById('loadGalleryBtn');
-const gallery=document.getElementById('gallery');
+const galleryScript = `const gallery=document.getElementById('gallery');
 const messageArea=document.getElementById('messageArea');
 
-loadGalleryBtn.addEventListener('click',async()=>{
+async function loadGallery(){
   const cognitoPoolId=document.getElementById('cognitoPoolId').value.trim();
   const s3BucketName=document.getElementById('s3BucketName').value.trim();
   const s3Region=document.getElementById('s3Region').value.trim();
   const s3Prefix=document.getElementById('s3Prefix').value.trim();
 
   if(!cognitoPoolId||!s3BucketName||!s3Region){
-    showMessage('Please fill in Cognito Pool ID, Bucket Name, and Region.',true);
+    showMessage('Missing configuration. Please verify environment variables.',true);
     return;
   }
 
@@ -54,7 +53,9 @@ loadGalleryBtn.addEventListener('click',async()=>{
     let imageCount=0;
     response.Contents.forEach((obj)=>{
       const key=obj.Key;
-      if(!key||key.endsWith('/')||!/\.(jpg|jpeg|png|gif|webp)$/i.test(key)){return;}
+      if(!key||key.endsWith('/')||!/\.(jpg|jpeg|png|gif|webp)$/i.test(key)){
+        return;
+      }
       imageCount++;
       const s3Url=\`https://\${s3BucketName}.s3.\${s3Region}.amazonaws.com/\${key}\`;
       const imgContainer=document.createElement('div');
@@ -83,12 +84,14 @@ loadGalleryBtn.addEventListener('click',async()=>{
     console.error('Error listing S3 objects:',error);
     showMessage(\`Error: \${error.message}. Check console and AWS permissions.\`,true);
   }
-});
+}
 
 function showMessage(message,isError=false){
   messageArea.textContent=message;
   messageArea.className=isError?'mt-4 text-sm text-red-600':'mt-4 text-sm text-gray-600';
 }
+
+window.addEventListener('load',loadGallery);
 `;
 
 export default function GalleryPage() {
@@ -167,13 +170,6 @@ export default function GalleryPage() {
               readOnly
             />
           </div>
-
-          <button
-            id="loadGalleryBtn"
-            className="w-full md:w-auto rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
-            Load Gallery
-          </button>
 
           <div id="messageArea" className="mt-4 text-sm text-gray-600"></div>
         </div>

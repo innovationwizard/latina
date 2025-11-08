@@ -102,3 +102,7 @@ async function generateEnhancedImage(imageId, width, height) {
   // ...
 }
 ```
+
+---
+
+**Version Note (2025-11-07):** The project is currently stable with the `Enhancer` component (no "Furniture" prefix), defaulting to the Surfaces (PhotoReal) mode, using `LATINABLUE` for favicon/OG, and ControlNet disabled. Upcoming architectural changes may break compatibility with the documented behavior above.

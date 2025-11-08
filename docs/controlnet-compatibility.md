@@ -106,3 +106,12 @@ async function generateEnhancedImage(imageId, width, height) {
 ---
 
 **Version Note (2025-11-07):** The project is currently stable with the `Enhancer` component (no "Furniture" prefix), defaulting to the Surfaces (PhotoReal) mode, using `LATINABLUE` for favicon/OG, and ControlNet disabled. Upcoming architectural changes may break compatibility with the documented behavior above.
+
+**Deployment Notes:**
+- Environment variable `S3_UPLOAD_BUCKET` is set to `latina-uploads` on Vercel.
+- Manual verification: two test images were uploaded after the change and confirmed present in the `latina-uploads` S3 bucket.
+
+**Additional Findings (2025-11-07):**
+- Using the `LEONARDO` scheduler with a legacy SD 1.5/2.0 payload (even when `alchemy: false`) forces the request back onto the Alchemy/SDXL pipeline, which breaks ControlNet compatibility.
+- Official docs and community reports confirm that legacy features (ControlNet, Elements) require both a legacy model *and* a legacy scheduler (e.g., `Euler`, `KLMS`, `DPM++`, `Heun`).
+- Best practice: for the structure/ControlNet path, set the scheduler to a classic legacy option such as `KLMS`; reserve `LEONARDO` only for Surfaces/PhotoReal mode.

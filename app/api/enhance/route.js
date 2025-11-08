@@ -39,11 +39,11 @@ function buildGenerationPayload(imageId, width, height, mode) {
     negative_prompt: NEGATIVE_PROMPT,
     guidance_scale: 7,
     num_images: 1,
-    scheduler: 'LEONARDO',
+    scheduler: 'KLMS',
     init_image_id: imageId,
     width: Math.min(width, 1024),
     height: Math.min(height, 1024),
-    init_strength: isStructure ? 0.4 : 0.3,
+    init_strength: isStructure ? 0.4 : 0.7,
     alchemy: !isStructure,
   };
 

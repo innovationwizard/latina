@@ -1,100 +1,108 @@
-import Script from "next/script";
+'use client';
 
-export const metadata = {
-  title: "Latina Uploads Gallery",
-  description:
-    "Securely browse thumbnails stored in your Latina uploads S3 bucket using Cognito Identity credentials.",
+import { useEffect, useMemo, useState } from 'react';
+import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
+
+type GalleryImage = {
+  key: string;
+  url: string;
 };
 
-const galleryScript = `const gallery=document.getElementById('gallery');
-const messageArea=document.getElementById('messageArea');
+const cognitoPoolId = process.env.NEXT_PUBLIC_COGNITO_POOL_ID || '';
+const bucketName = process.env.NEXT_PUBLIC_S3_BUCKET || '';
+const region = process.env.NEXT_PUBLIC_S3_REGION || '';
+const prefix = process.env.NEXT_PUBLIC_S3_PREFIX || '';
 
-async function loadGallery(){
-  const cognitoPoolId=document.getElementById('cognitoPoolId').value.trim();
-  const s3BucketName=document.getElementById('s3BucketName').value.trim();
-  const s3Region=document.getElementById('s3Region').value.trim();
-  const s3Prefix=document.getElementById('s3Prefix').value.trim();
+export const metadata = {
+  title: 'Latina Uploads Gallery',
+  description:
+    'Securely browse thumbnails stored in your Latina uploads S3 bucket using Cognito Identity credentials.',
+};
 
-  if(!cognitoPoolId||!s3BucketName||!s3Region){
-    showMessage('Missing configuration. Please verify environment variables.',true);
-    return;
+function buildClient() {
+  if (!bucketName || !region || !cognitoPoolId) {
+    return null;
   }
 
-  gallery.innerHTML='';
-  showMessage('Loading images...',false);
-
-  try{
-    const { S3Client, ListObjectsV2Command } = await import('https://js.aws.com/v3-alpha/client-s3/browser/client-s3-es.js');
-    const { fromCognitoIdentityPool } = await import('https://js.aws.com/v3-alpha/credential-provider-cognito-identity/browser/credential-provider-cognito-identity-es.js');
-
-    const credentials=fromCognitoIdentityPool({
-      clientConfig:{region:s3Region},
-      identityPoolId:cognitoPoolId,
-    });
-
-    const s3Client=new S3Client({
-      region:s3Region,
-      credentials,
-    });
-
-    const params={Bucket:s3BucketName};
-    if(s3Prefix){
-      params.Prefix=s3Prefix.endsWith('/')?s3Prefix:s3Prefix+'/';
-    }
-
-    const command=new ListObjectsV2Command(params);
-    const response=await s3Client.send(command);
-
-    if(!response.Contents||response.Contents.length===0){
-      showMessage('No objects found in this bucket/prefix.',false);
-      return;
-    }
-
-    let imageCount=0;
-    response.Contents.forEach((obj)=>{
-      const key=obj.Key;
-      if(!key||key.endsWith('/')||!/\.(jpg|jpeg|png|gif|webp)$/i.test(key)){
-        return;
-      }
-      imageCount++;
-      const s3Url=\`https://\${s3BucketName}.s3.\${s3Region}.amazonaws.com/\${key}\`;
-      const imgContainer=document.createElement('div');
-      imgContainer.className='relative aspect-square overflow-hidden rounded-lg bg-gray-200 shadow';
-
-      const img=document.createElement('img');
-      img.src=s3Url;
-      img.alt=key;
-      img.className='h-full w-full object-cover object-center transition-transform duration-300 hover:scale-110';
-      img.loading='lazy';
-      img.onerror=()=>{
-        img.alt='Error loading image';
-        img.src='https://placehold.co/300x300/ef4444/ffffff?text=Error';
-      };
-
-      imgContainer.appendChild(img);
-      gallery.appendChild(imgContainer);
-    });
-
-    if(imageCount>0){
-      showMessage(\`Successfully loaded \${imageCount} images.\`,false);
-    }else{
-      showMessage('No images found in this bucket/prefix.',false);
-    }
-  }catch(error){
-    console.error('Error listing S3 objects:',error);
-    showMessage(\`Error: \${error.message}. Check console and AWS permissions.\`,true);
-  }
+  return new S3Client({
+    region,
+    credentials: fromCognitoIdentityPool({
+      clientConfig: { region },
+      identityPoolId: cognitoPoolId,
+    }),
+  });
 }
-
-function showMessage(message,isError=false){
-  messageArea.textContent=message;
-  messageArea.className=isError?'mt-4 text-sm text-red-600':'mt-4 text-sm text-gray-600';
-}
-
-window.addEventListener('load',loadGallery);
-`;
 
 export default function GalleryPage() {
+  const [images, setImages] = useState<GalleryImage[]>([]);
+  const [message, setMessage] = useState<string>('Preparing to load gallery...');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const s3Client = useMemo(() => buildClient(), []);
+
+  useEffect(() => {
+    async function loadGallery() {
+      if (!s3Client) {
+        setError('Missing S3 configuration. Please verify environment variables.');
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+      setMessage('Loading images...');
+
+      try {
+        const params: any = {
+          Bucket: bucketName,
+        };
+
+        if (prefix) {
+          params.Prefix = prefix.endsWith('/') ? prefix : `${prefix}/`;
+        }
+
+        const command = new ListObjectsV2Command(params);
+        const response = await s3Client.send(command);
+
+        if (!response.Contents || response.Contents.length === 0) {
+          setImages([]);
+          setMessage('No objects found in this bucket/prefix.');
+          setIsLoading(false);
+          return;
+        }
+
+        const newImages: GalleryImage[] = [];
+
+        response.Contents.forEach((obj) => {
+          const key = obj.Key;
+          if (!key || key.endsWith('/') || !/\.(jpg|jpeg|png|gif|webp)$/i.test(key)) {
+            return;
+          }
+
+          const encodedKey = key.split('/').map(encodeURIComponent).join('/');
+          const url = `https://${bucketName}.s3.${region}.amazonaws.com/${encodedKey}`;
+          newImages.push({ key, url });
+        });
+
+        if (newImages.length === 0) {
+          setMessage('No images found in this bucket/prefix.');
+        } else {
+          setMessage(`Successfully loaded ${newImages.length} images.`);
+        }
+
+        setImages(newImages);
+      } catch (err: any) {
+        console.error('Error listing S3 objects:', err);
+        setError(`Error: ${err?.message || 'Unknown error'}. Check console and AWS permissions.`);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadGallery();
+  }, [s3Client]);
+
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       <div className="container mx-auto max-w-6xl p-4 md:p-8">
@@ -103,85 +111,81 @@ export default function GalleryPage() {
             Latina Uploads Gallery
           </h1>
           <p className="text-gray-600 mb-6">
-            Enter your Cognito identity pool and AWS S3 details to securely list
-            and view archived uploads. Ensure your IAM and CORS settings allow
-            browser access.
+            Viewing archived uploads from your S3 bucket using Cognito Identity
+            credentials configured in the environment.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label
-                htmlFor="cognitoPoolId"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Cognito Pool ID
-              </label>
-              <input
-                type="text"
-                id="cognitoPoolId"
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm focus:outline-none sm:text-sm"
-                value={process.env.NEXT_PUBLIC_COGNITO_POOL_ID || ''}
-                readOnly
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="s3BucketName"
-                className="block text-sm font-medium text-gray-700"
-              >
-                S3 Bucket Name
-              </label>
-              <input
-                type="text"
-                id="s3BucketName"
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm focus:outline-none sm:text-sm"
-                value={process.env.NEXT_PUBLIC_S3_BUCKET || ''}
-                readOnly
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="s3Region"
-                className="block text-sm font-medium text-gray-700"
-              >
-                S3 Region
-              </label>
-              <input
-                type="text"
-                id="s3Region"
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm focus:outline-none sm:text-sm"
-                value={process.env.NEXT_PUBLIC_S3_REGION || ''}
-                readOnly
-              />
-            </div>
-          </div>
-          <div className="mb-6">
-            <label
-              htmlFor="s3Prefix"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Optional: Folder / Prefix
-            </label>
-            <input
-              type="text"
-              id="s3Prefix"
-              className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm focus:outline-none sm:text-sm"
-              value={process.env.NEXT_PUBLIC_S3_PREFIX || ''}
-              readOnly
-            />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <ReadOnlyField label="Cognito Pool ID" value={cognitoPoolId} />
+            <ReadOnlyField label="S3 Bucket" value={bucketName} />
+            <ReadOnlyField label="Region" value={region} />
+            <ReadOnlyField label="Prefix" value={prefix || '(root)'} />
           </div>
 
-          <div id="messageArea" className="mt-4 text-sm text-gray-600"></div>
+          <Status message={message} error={error} isLoading={isLoading} />
         </div>
 
-        <div
-          id="gallery"
-          className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"
-        />
+        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          {images.map((image) => (
+            <figure
+              key={image.key}
+              className="relative aspect-square overflow-hidden rounded-lg bg-gray-200 shadow"
+            >
+              <img
+                src={image.url}
+                alt={image.key}
+                loading="lazy"
+                className="h-full w-full object-cover object-center transition-transform duration-300 hover:scale-110"
+                onError={(event) => {
+                  const target = event.currentTarget;
+                  target.alt = 'Error loading image';
+                  target.src = 'https://placehold.co/300x300/ef4444/ffffff?text=Error';
+                }}
+              />
+              <figcaption className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-1 text-[10px] text-gray-100">
+                {image.key}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
       </div>
-      <Script id="gallery-loader" type="module">
-        {galleryScript}
-      </Script>
+    </div>
+  );
+}
+
+type ReadOnlyFieldProps = {
+  label: string;
+  value: string;
+};
+
+function ReadOnlyField({ label, value }: ReadOnlyFieldProps) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <input
+        type="text"
+        value={value}
+        readOnly
+        className="mt-1 block w-full cursor-not-allowed rounded-md border border-gray-300 bg-gray-100 px-3 py-2 shadow-sm focus:outline-none sm:text-sm"
+      />
+    </div>
+  );
+}
+
+type StatusProps = {
+  message: string;
+  error: string | null;
+  isLoading: boolean;
+};
+
+function Status({ message, error, isLoading }: StatusProps) {
+  if (error) {
+    return <div className="mt-4 text-sm text-red-600">{error}</div>;
+  }
+
+  return (
+    <div className="mt-4 text-sm text-gray-600">
+      {isLoading ? 'Loading gallery…' : message}
     </div>
   );
 }

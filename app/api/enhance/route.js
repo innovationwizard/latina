@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3_BUCKETS, S3_REGION, getS3Url } from '@/lib/s3-utils';
 
 // ============================================================================
 // LEONARDO AI API CONFIGURATION
@@ -15,10 +16,6 @@ const PROMPT =
   'ultra-realistic, photorealistic interior design render, 8k, sharp focus, realistic textures on all surfaces, rich wood grain, soft fabric, polished marble, realistic global illumination and soft shadows';
 const NEGATIVE_PROMPT =
   'drawn, sketch, illustration, cartoon, blurry, distorted, warped, ugly, noisy, grainy, unreal';
-
-const S3_UPLOAD_BUCKET = process.env.S3_UPLOAD_BUCKET || 'latina-uploads';
-const LEONARDO_S3_BUCKET = process.env.LEONARDO_S3_BUCKET || 'latina-leonardo-images';
-const S3_REGION = process.env.AWS_REGION || 'us-east-2';
 const hasExplicitCreds =
   Boolean(process.env.AWS_ACCESS_KEY_ID) && Boolean(process.env.AWS_SECRET_ACCESS_KEY);
 
@@ -155,18 +152,14 @@ async function uploadToLeonardo(imageBuffer, extension) {
 }
 
 async function backupUploadToS3(buffer, filename, mimeType, projectId = null) {
-  if (!S3_UPLOAD_BUCKET) {
-    console.warn('S3_UPLOAD_BUCKET not configured; skipping archive backup.');
-    return null;
-  }
-
+  // Original uploads go to latina-uploads bucket
   const safeName = filename ? filename.replace(/[^a-zA-Z0-9._-]/g, '-') : 'upload.jpg';
-  const prefix = projectId ? `uploads/${projectId}` : 'uploads';
+  const prefix = projectId ? `uploads/${projectId}/originals` : 'uploads/originals';
   const key = `${prefix}/${Date.now()}-${safeName}`;
 
   await s3Client.send(
     new PutObjectCommand({
-      Bucket: S3_UPLOAD_BUCKET,
+      Bucket: S3_BUCKETS.UPLOADS,
       Key: key,
       Body: buffer,
       ContentType: mimeType || 'application/octet-stream',
@@ -174,18 +167,13 @@ async function backupUploadToS3(buffer, filename, mimeType, projectId = null) {
   );
 
   return {
-    bucket: S3_UPLOAD_BUCKET,
+    bucket: S3_BUCKETS.UPLOADS,
     key,
-    location: `https://${S3_UPLOAD_BUCKET}.s3.${S3_REGION}.amazonaws.com/${key}`,
+    location: getS3Url(S3_BUCKETS.UPLOADS, key),
   };
 }
 
 async function saveEnhancedImageToS3(imageUrl, projectId, filename) {
-  if (!LEONARDO_S3_BUCKET) {
-    console.warn('LEONARDO_S3_BUCKET not configured; skipping enhanced image save.');
-    return null;
-  }
-
   try {
     // Download the enhanced image from Leonardo
     const response = await fetch(imageUrl);
@@ -194,12 +182,14 @@ async function saveEnhancedImageToS3(imageUrl, projectId, filename) {
     }
     const buffer = Buffer.from(await response.arrayBuffer());
 
+    // Enhanced images go to latina-leonardo-images bucket
+    const safeName = filename ? filename.replace(/[^a-zA-Z0-9._-]/g, '-') : 'enhanced.jpg';
     const prefix = projectId ? `enhanced/${projectId}` : 'enhanced';
-    const key = `${prefix}/${Date.now()}-${filename || 'enhanced.jpg'}`;
+    const key = `${prefix}/${Date.now()}-${safeName}`;
 
     await s3Client.send(
       new PutObjectCommand({
-        Bucket: LEONARDO_S3_BUCKET,
+        Bucket: S3_BUCKETS.LEONARDO,
         Key: key,
         Body: buffer,
         ContentType: 'image/jpeg',
@@ -207,9 +197,9 @@ async function saveEnhancedImageToS3(imageUrl, projectId, filename) {
     );
 
     return {
-      bucket: LEONARDO_S3_BUCKET,
+      bucket: S3_BUCKETS.LEONARDO,
       key,
-      location: `https://${LEONARDO_S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${key}`,
+      location: getS3Url(S3_BUCKETS.LEONARDO, key),
     };
   } catch (error) {
     console.error('Error saving enhanced image to S3:', error);

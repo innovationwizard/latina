@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-
-const LEONARDO_S3_BUCKET = process.env.LEONARDO_S3_BUCKET || 'latina-leonardo-images';
-const S3_REGION = process.env.AWS_REGION || 'us-east-2';
+import { getS3Config, getS3Url, S3_BUCKETS, S3_REGION } from '@/lib/s3-utils';
 
 const s3Client = new S3Client({
   region: S3_REGION,
@@ -41,10 +39,20 @@ export async function POST(request: Request) {
     // If file is provided, upload to S3
     if (file) {
       const buffer = Buffer.from(await file.arrayBuffer());
-      const timestamp = Date.now();
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-      s3Key = `images/${projectId}/${timestamp}-${safeName}`;
-      s3Bucket = imageType === 'enhanced' ? LEONARDO_S3_BUCKET : process.env.S3_UPLOAD_BUCKET || 'latina-uploads';
+      
+      // Determine category based on image type
+      let category: 'original_upload' | 'leonardo_enhanced' | 'project_image';
+      if (imageType === 'enhanced') {
+        category = 'leonardo_enhanced';
+      } else if (imageType === 'original') {
+        category = 'original_upload';
+      } else {
+        category = 'project_image';
+      }
+
+      const s3Config = getS3Config(file, category, projectId);
+      s3Key = s3Config.key;
+      s3Bucket = s3Config.bucket;
 
       await s3Client.send(
         new PutObjectCommand({
@@ -55,7 +63,7 @@ export async function POST(request: Request) {
         })
       );
 
-      storedUrl = `https://${s3Bucket}.s3.${S3_REGION}.amazonaws.com/${s3Key}`;
+      storedUrl = getS3Url(s3Bucket, s3Key);
     }
 
     // Parse metadata if provided

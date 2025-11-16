@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-
-const S3_UPLOAD_BUCKET = process.env.S3_UPLOAD_BUCKET || 'latina-uploads';
-const S3_REGION = process.env.AWS_REGION || 'us-east-2';
+import { getS3Config, getS3Url, determineFileCategory, S3_REGION, S3_BUCKETS } from '@/lib/s3-utils';
 
 const s3Client = new S3Client({
   region: S3_REGION,
@@ -105,28 +103,41 @@ export async function POST(
       );
     }
 
+    // Determine file category and get S3 config
+    const isImage = file.type.startsWith('image/');
+    
+    // For non-image files, determine if it's a design file
+    const isDesignFile = !isImage && (
+      file.name.match(/\.(dwg|dxf|skp|3dm|rhino|ai|eps|psd|blend|max|fbx)$/i) ||
+      description?.toLowerCase().includes('design') ||
+      description?.toLowerCase().includes('drawing') ||
+      description?.toLowerCase().includes('render') ||
+      description?.toLowerCase().includes('technical') ||
+      description?.toLowerCase().includes('presentation')
+    );
+
+    const category = isImage 
+      ? 'project_image' 
+      : (isDesignFile ? 'design_file' : 'document');
+    
+    const s3Config = getS3Config(file, category, projectId, workflowStep);
+
     // Upload to S3
     const buffer = Buffer.from(await file.arrayBuffer());
-    const timestamp = Date.now();
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-    const s3Key = `projects/${projectId}/${workflowStep}/${timestamp}-${safeName}`;
 
     await s3Client.send(
       new PutObjectCommand({
-        Bucket: S3_UPLOAD_BUCKET,
-        Key: s3Key,
+        Bucket: s3Config.bucket,
+        Key: s3Config.key,
         Body: buffer,
         ContentType: file.type || 'application/octet-stream',
       })
     );
 
-    const fileUrl = `https://${S3_UPLOAD_BUCKET}.s3.${S3_REGION}.amazonaws.com/${s3Key}`;
-
-    // Determine if it's an image or file
-    const isImage = file.type.startsWith('image/');
+    const fileUrl = getS3Url(s3Config.bucket, s3Config.key);
 
     if (isImage) {
-      // Save to images table
+      // Save to images table - project images go to latina-images bucket
       const sql = `
         INSERT INTO images (
           project_id, workflow_step, image_type, original_url,
@@ -141,8 +152,8 @@ export async function POST(
         workflowStep,
         'photo',
         fileUrl,
-        s3Key,
-        S3_UPLOAD_BUCKET,
+        s3Config.key,
+        s3Config.bucket,
         file.name,
         file.type,
       ]);
@@ -150,6 +161,20 @@ export async function POST(
       return NextResponse.json({ file: result.rows[0], type: 'image' }, { status: 201 });
     } else {
       // Save to design_files table
+      // Determine file_type for database
+      let dbFileType = 'document';
+      if (isDesignFile) {
+        if (file.name.match(/\.(dwg|dxf)$/i)) {
+          dbFileType = 'drawing';
+        } else if (file.name.match(/\.(skp|3dm|rhino|blend|max|fbx)$/i)) {
+          dbFileType = 'render';
+        } else if (file.name.match(/\.(ai|eps|psd)$/i)) {
+          dbFileType = 'presentation';
+        } else {
+          dbFileType = 'technical';
+        }
+      }
+
       const sql = `
         INSERT INTO design_files (
           project_id, workflow_step, file_type, file_name,
@@ -162,12 +187,12 @@ export async function POST(
       const result = await query(sql, [
         projectId,
         workflowStep,
-        'document',
+        dbFileType,
         file.name,
         fileUrl,
         's3',
-        s3Key,
-        S3_UPLOAD_BUCKET,
+        s3Config.key,
+        s3Config.bucket,
         file.type,
         file.size,
         description || null,

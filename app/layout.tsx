@@ -16,7 +16,7 @@ const robotoMono = Roboto_Mono({
 
 export const metadata: Metadata = {
   title: "Latina",
-  description: "Interior design operations platform",
+  description: "Interior Design Business Dashboard",
   icons: {
     icon: "/LATINABLUE.png",
     shortcut: "/LATINABLUE.png",

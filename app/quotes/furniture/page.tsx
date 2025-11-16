@@ -45,10 +45,12 @@ export default function FurnitureQuotePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'furniture',
-          ...formData,
           width: parseFloat(formData.width),
           height: parseFloat(formData.height),
           depth: parseFloat(formData.depth),
+          materialTier: formData.materialTier,
+          addOns: formData.addOns,
+          complexity: formData.complexity,
         }),
       });
 

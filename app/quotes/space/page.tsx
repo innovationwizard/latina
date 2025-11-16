@@ -34,8 +34,11 @@ export default function SpaceDesignQuotePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'space',
-          ...formData,
+          roomType: formData.roomType,
           area: parseFloat(formData.area),
+          scope: formData.scope,
+          materialTier: formData.materialTier,
+          includesRenders: formData.includesRenders,
           revisionRounds: parseInt(formData.revisionRounds.toString()),
         }),
       });

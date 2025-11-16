@@ -50,13 +50,22 @@ export default function NewProjectPage() {
     <div className="min-h-screen bg-[#FAFAF8]">
       <div className="max-w-2xl mx-auto px-6 py-12">
         <div className="mb-8">
-          <Link
-            href="/projects"
-            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver a Proyectos
-          </Link>
+          <div className="flex items-center gap-4 mb-6">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Inicio
+            </Link>
+            <span className="text-gray-300">|</span>
+            <Link
+              href="/projects"
+              className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Proyectos
+            </Link>
+          </div>
           <h1 className="text-3xl font-light text-gray-900 mb-2">Nuevo Proyecto</h1>
           <p className="text-sm text-gray-500">Crea un nuevo proyecto de diseño</p>
         </div>

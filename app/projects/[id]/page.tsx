@@ -120,13 +120,22 @@ export default function ProjectDetailPage() {
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="mb-8">
-          <Link
-            href="/projects"
-            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver a Proyectos
-          </Link>
+          <div className="flex items-center gap-4 mb-6">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Inicio
+            </Link>
+            <span className="text-gray-300">|</span>
+            <Link
+              href="/projects"
+              className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Proyectos
+            </Link>
+          </div>
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-light text-gray-900 mb-2">{project.project_name}</h1>

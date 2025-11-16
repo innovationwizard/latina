@@ -55,20 +55,20 @@ export default function NewProjectPage() {
             className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Projects
+            Volver a Proyectos
           </Link>
-          <h1 className="text-3xl font-light text-gray-900 mb-2">New Project</h1>
-          <p className="text-sm text-gray-500">Create a new design project</p>
+          <h1 className="text-3xl font-light text-gray-900 mb-2">Nuevo Proyecto</h1>
+          <p className="text-sm text-gray-500">Crea un nuevo proyecto de diseño</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-8 space-y-6">
           {/* Client Information */}
           <div>
-            <h2 className="text-lg font-light text-gray-900 mb-4">Client Information</h2>
+            <h2 className="text-lg font-light text-gray-900 mb-4">Información del Cliente</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client Name *
+                  Nombre del Cliente *
                 </label>
                 <input
                   type="text"
@@ -81,7 +81,7 @@ export default function NewProjectPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
+                    Correo Electrónico
                   </label>
                   <input
                     type="email"
@@ -92,7 +92,7 @@ export default function NewProjectPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone
+                    Teléfono
                   </label>
                   <input
                     type="tel"
@@ -107,11 +107,11 @@ export default function NewProjectPage() {
 
           {/* Project Information */}
           <div>
-            <h2 className="text-lg font-light text-gray-900 mb-4">Project Information</h2>
+            <h2 className="text-lg font-light text-gray-900 mb-4">Información del Proyecto</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Project Name *
+                  Nombre del Proyecto *
                 </label>
                 <input
                   type="text"
@@ -123,7 +123,7 @@ export default function NewProjectPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Project Type *
+                  Tipo de Proyecto *
                 </label>
                 <select
                   required
@@ -131,39 +131,39 @@ export default function NewProjectPage() {
                   onChange={(e) => setFormData({ ...formData, project_type: e.target.value as any })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                 >
-                  <option value="space_design">Space Design</option>
-                  <option value="furniture_design">Furniture Design</option>
+                  <option value="space_design">Diseño de Espacios</option>
+                  <option value="furniture_design">Diseño de Mobiliario</option>
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Budget Range
+                    Rango de Presupuesto
                   </label>
                   <input
                     type="text"
                     value={formData.budget_range}
                     onChange={(e) => setFormData({ ...formData, budget_range: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-                    placeholder="e.g., $50,000 - $75,000"
+                    placeholder="ej., $50,000 - $75,000"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Room Type
+                    Tipo de Espacio
                   </label>
                   <input
                     type="text"
                     value={formData.room_type}
                     onChange={(e) => setFormData({ ...formData, room_type: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
-                    placeholder="e.g., Living Room"
+                    placeholder="ej., Sala de Estar"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes
+                  Notas
                 </label>
                 <textarea
                   value={formData.notes}
@@ -186,14 +186,14 @@ export default function NewProjectPage() {
               href="/projects"
               className="px-6 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              Cancelar
             </Link>
             <button
               type="submit"
               disabled={loading}
               className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-light disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Project'}
+              {loading ? 'Creando...' : 'Crear Proyecto'}
             </button>
           </div>
         </form>

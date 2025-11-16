@@ -97,7 +97,7 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
       formData.append('file', file);
       formData.append('workflow_step', workflowStep);
       if (file.type.startsWith('image/')) {
-        formData.append('description', `Photo uploaded for ${stepLabel}`);
+        formData.append('description', `Foto subida para ${stepLabel}`);
       }
 
       const response = await fetch(`/api/projects/${projectId}/files`, {
@@ -136,7 +136,7 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
   };
 
   if (loading) {
-    return <div className="text-sm text-gray-500 py-4">Loading...</div>;
+    return <div className="text-sm text-gray-500 py-4">Cargando...</div>;
   }
 
   return (
@@ -146,7 +146,7 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-medium text-gray-900 flex items-center gap-2">
             <FileText className="w-4 h-4" />
-            Notes
+            Notas
           </h3>
           {!showAddNote && (
             <button
@@ -154,7 +154,7 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
               className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1"
             >
               <Plus className="w-3 h-3" />
-              Add Note
+              Agregar Nota
             </button>
           )}
         </div>
@@ -164,25 +164,25 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Author (optional)
+                  Autor (opcional)
                 </label>
                 <input
                   type="text"
                   value={newNoteAuthor}
                   onChange={(e) => setNewNoteAuthor(e.target.value)}
-                  placeholder="Your name"
+                  placeholder="Tu nombre"
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400"
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Note
+                  Nota
                 </label>
                 <textarea
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
                   rows={3}
-                  placeholder="Add a note for this step..."
+                  placeholder="Agrega una nota para este paso..."
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400"
                 />
               </div>
@@ -191,7 +191,7 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
                   onClick={handleAddNote}
                   className="px-3 py-1.5 text-xs bg-gray-900 text-white rounded-md hover:bg-gray-800"
                 >
-                  Save Note
+                  Guardar Nota
                 </button>
                 <button
                   onClick={() => {
@@ -201,7 +201,7 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
                   }}
                   className="px-3 py-1.5 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
                 >
-                  Cancel
+                  Cancelar
                 </button>
               </div>
             </div>
@@ -209,14 +209,14 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
         )}
 
         {notes.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">No notes yet</p>
+          <p className="text-sm text-gray-400 italic">Aún no hay notas</p>
         ) : (
           <div className="space-y-3">
             {notes.map((note) => (
               <div key={note.id} className="p-3 bg-white border border-gray-200 rounded-md">
                 <div className="flex items-start justify-between mb-2">
                   <div className="text-xs text-gray-500">
-                    {note.created_by || 'Anonymous'} • {formatDate(note.created_at)}
+                    {note.created_by || 'Anónimo'} • {formatDate(note.created_at)}
                   </div>
                 </div>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.note_text}</p>
@@ -231,12 +231,12 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-medium text-gray-900 flex items-center gap-2">
             <ImageIcon className="w-4 h-4" />
-            Photos & Files
+            Fotos y Archivos
           </h3>
           {!showAddFile && (
             <label className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1 cursor-pointer">
               <Plus className="w-3 h-3" />
-              Upload
+              Subir
               <input
                 type="file"
                 className="hidden"
@@ -250,12 +250,12 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
 
         {uploading && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-600">
-            Uploading...
+            Subiendo...
           </div>
         )}
 
         {files.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">No files uploaded yet</p>
+          <p className="text-sm text-gray-400 italic">Aún no se han subido archivos</p>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {files.map((file) => (
@@ -291,7 +291,7 @@ export default function StepContent({ projectId, workflowStep, stepLabel }: Step
                       download
                       className="mt-2 text-xs text-gray-600 hover:text-gray-900"
                     >
-                      Download
+                      Descargar
                     </a>
                   </div>
                 )}

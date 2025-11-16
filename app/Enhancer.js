@@ -191,21 +191,21 @@ export default function Enhancer() {
                   <label htmlFor="file-upload" className="cursor-pointer">
                     <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                     <p className="text-lg text-gray-600 mb-2">
-                      Drop your image here
+                      Arrastra tu imagen aquí
                     </p>
-                    <p className="text-sm text-gray-400 mb-4">or</p>
+                    <p className="text-sm text-gray-400 mb-4">o</p>
                     <span className="inline-block px-6 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors">
-                      Browse to upload
+                      Explorar para subir
                     </span>
                     <p className="text-xs text-gray-400 mt-4">
-                      JPG or PNG
+                      JPG o PNG
                     </p>
                   </label>
                 ) : (
                   <div className="space-y-4">
                     <img 
                       src={preview} 
-                      alt="Preview" 
+                      alt="Vista previa" 
                       className="max-h-64 mx-auto rounded-lg shadow-sm"
                     />
                     <button
@@ -217,7 +217,7 @@ export default function Enhancer() {
                       className="text-sm text-gray-500 hover:text-gray-700"
                       disabled={isProcessing}
                     >
-                      Change image
+                      Cambiar imagen
                     </button>
                   </div>
                 )}
@@ -236,7 +236,7 @@ export default function Enhancer() {
                   onClick={enhanceImage}
                   className="w-full py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-light"
                 >
-                  Enhance Image
+                  Mejorar Imagen
                 </button>
               )}
 
@@ -248,10 +248,10 @@ export default function Enhancer() {
                     <Loader2 className="w-16 h-16 text-gray-400 animate-spin" />
                   </div>
                   <p className="text-gray-600 font-light">
-                    Creating magic...
+                    Creando magia...
                   </p>
                   <p className="text-sm text-gray-400">
-                    This may take any number of seconds...
+                    Esto puede tomar varios segundos...
                   </p>
                 </div>
               )}
@@ -262,13 +262,13 @@ export default function Enhancer() {
       {enhancedImage && (
         <div className="space-y-6">
           <h2 className="text-lg font-light text-gray-900">
-            Enhanced Image
+            Imagen Mejorada
           </h2>
 
           <div className="bg-white rounded-lg p-4 shadow-sm">
             <img 
               src={enhancedImage} 
-              alt="Enhanced" 
+              alt="Mejorada" 
               className="w-full rounded-lg"
             />
           </div>
@@ -279,7 +279,7 @@ export default function Enhancer() {
             className="w-full py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-light flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
-            Download
+            Descargar
           </button>
 
           {/* Start Over */}
@@ -292,7 +292,7 @@ export default function Enhancer() {
             }}
             className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md transition-colors"
           >
-            Enhance Another Image
+            Mejorar Otra Imagen
           </button>
         </div>
       )}

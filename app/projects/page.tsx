@@ -17,20 +17,20 @@ type Project = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  lead: 'Lead',
-  scheduled: 'Scheduled',
-  site_visit: 'Site Visit',
-  design: 'Design',
-  client_review_1: 'Client Review 1',
-  design_revision_1: 'Design Revision 1',
-  client_review_2: 'Client Review 2',
-  design_revision_2: 'Design Revision 2',
-  client_review_3: 'Client Review 3',
-  quotation: 'Quotation',
-  technical_drawings: 'Technical Drawings',
-  manufacturing: 'Manufacturing',
-  installation: 'Installation',
-  completed: 'Completed',
+  lead: 'Prospecto',
+  scheduled: 'Agendado',
+  site_visit: 'Visita al Sitio',
+  design: 'Diseño',
+  client_review_1: 'Revisión Cliente 1',
+  design_revision_1: 'Revisión Diseño 1',
+  client_review_2: 'Revisión Cliente 2',
+  design_revision_2: 'Revisión Diseño 2',
+  client_review_3: 'Revisión Cliente 3',
+  quotation: 'Cotización',
+  technical_drawings: 'Planos Técnicos',
+  manufacturing: 'Manufactura',
+  installation: 'Instalación',
+  completed: 'Completado',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -91,15 +91,15 @@ export default function ProjectsPage() {
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-light text-gray-900 mb-2">Projects</h1>
-            <p className="text-sm text-gray-500">Manage all design projects</p>
+            <h1 className="text-3xl font-light text-gray-900 mb-2">Proyectos</h1>
+            <p className="text-sm text-gray-500">Gestiona todos los proyectos de diseño</p>
           </div>
           <Link
             href="/projects/new"
             className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-light"
           >
             <Plus className="w-4 h-4" />
-            New Project
+            Nuevo Proyecto
           </Link>
         </div>
 
@@ -107,14 +107,14 @@ export default function ProjectsPage() {
         <div className="mb-6 flex gap-4 items-center">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-500">Filter:</span>
+            <span className="text-sm text-gray-500">Filtrar:</span>
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
           >
-            <option value="all">All Status</option>
+            <option value="all">Todos los Estados</option>
             {Object.entries(STATUS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -126,24 +126,24 @@ export default function ProjectsPage() {
             onChange={(e) => setFilterType(e.target.value)}
             className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
           >
-            <option value="all">All Types</option>
-            <option value="space_design">Space Design</option>
-            <option value="furniture_design">Furniture Design</option>
+            <option value="all">Todos los Tipos</option>
+            <option value="space_design">Diseño de Espacios</option>
+            <option value="furniture_design">Diseño de Mobiliario</option>
           </select>
         </div>
 
         {/* Projects List */}
         {loading ? (
-          <div className="text-center py-12 text-gray-500">Loading projects...</div>
+          <div className="text-center py-12 text-gray-500">Cargando proyectos...</div>
         ) : projects.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">No projects found</p>
+            <p className="text-gray-500 mb-4">No se encontraron proyectos</p>
             <Link
               href="/projects/new"
               className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm"
             >
               <Plus className="w-4 h-4" />
-              Create Your First Project
+              Crea Tu Primer Proyecto
             </Link>
           </div>
         ) : (
@@ -177,9 +177,9 @@ export default function ProjectsPage() {
                 </div>
 
                 <div className="flex items-center gap-4 text-xs text-gray-400 pt-4 border-t border-gray-100">
-                  <span>{project.quote_count || 0} quotes</span>
+                  <span>{project.quote_count || 0} cotizaciones</span>
                   <span>•</span>
-                  <span>{project.image_count || 0} images</span>
+                  <span>{project.image_count || 0} imágenes</span>
                   <ArrowRight className="w-3 h-3 ml-auto" />
                 </div>
               </Link>

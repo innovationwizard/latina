@@ -59,7 +59,7 @@ export default function ProjectImagesPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
-        <p className="text-gray-500">Loading images...</p>
+        <p className="text-gray-500">Cargando imágenes...</p>
       </div>
     );
   }
@@ -73,22 +73,22 @@ export default function ProjectImagesPage() {
             className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Project
+            Volver al Proyecto
           </Link>
-          <h1 className="text-3xl font-light text-gray-900 mb-2">Image Comparison</h1>
-          <p className="text-sm text-gray-500">Compare original uploads with enhanced versions</p>
+          <h1 className="text-3xl font-light text-gray-900 mb-2">Comparación de Imágenes</h1>
+          <p className="text-sm text-gray-500">Compara las imágenes originales con las versiones mejoradas</p>
         </div>
 
         {images.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No enhanced images found for this project</p>
+            <p className="text-gray-500">No se encontraron imágenes mejoradas para este proyecto</p>
           </div>
         ) : (
           <div className="space-y-8">
             {images.map((pair: any, index: number) => (
               <div key={pair.enhanced.id} className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="mb-4 text-sm text-gray-500">
-                  Image {index + 1} • {new Date(pair.enhanced.created_at).toLocaleDateString()}
+                  Imagen {index + 1} • {new Date(pair.enhanced.created_at).toLocaleDateString('es-MX')}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Original */}
@@ -102,7 +102,7 @@ export default function ProjectImagesPage() {
                           className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
                         >
                           <Download className="w-3 h-3" />
-                          Download
+                          Descargar
                         </a>
                       )}
                     </div>
@@ -114,7 +114,7 @@ export default function ProjectImagesPage() {
                       />
                     ) : (
                       <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center text-sm text-gray-400">
-                        Original not available
+                        Original no disponible
                       </div>
                     )}
                   </div>
@@ -122,7 +122,7 @@ export default function ProjectImagesPage() {
                   {/* Enhanced */}
                   <div>
                     <div className="mb-2 flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-gray-700">Enhanced</h3>
+                      <h3 className="text-sm font-medium text-gray-700">Mejorada</h3>
                       {pair.enhanced.enhanced_url && (
                         <a
                           href={pair.enhanced.enhanced_url}
@@ -130,19 +130,19 @@ export default function ProjectImagesPage() {
                           className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
                         >
                           <Download className="w-3 h-3" />
-                          Download
+                          Descargar
                         </a>
                       )}
                     </div>
                     {pair.enhanced.enhanced_url ? (
                       <img
                         src={pair.enhanced.enhanced_url}
-                        alt="Enhanced"
+                        alt="Mejorada"
                         className="w-full rounded-lg border border-gray-200"
                       />
                     ) : (
                       <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center text-sm text-gray-400">
-                        Enhanced not available
+                        Mejorada no disponible
                       </div>
                     )}
                   </div>

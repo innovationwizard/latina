@@ -67,42 +67,42 @@ export default function SpaceDesignQuotePage() {
             className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Quotes
+            Volver a Cotizaciones
           </Link>
-          <h1 className="text-3xl font-light text-gray-900 mb-2">Space Design Quote</h1>
-          <p className="text-sm text-gray-500">Calculate pricing for interior space design projects</p>
+          <h1 className="text-3xl font-light text-gray-900 mb-2">Cotización Diseño de Espacios</h1>
+          <p className="text-sm text-gray-500">Calcula precios para proyectos de diseño de espacios interiores</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form */}
           <div className="space-y-6">
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-light text-gray-900 mb-6">Project Details</h2>
+              <h2 className="text-lg font-light text-gray-900 mb-6">Detalles del Proyecto</h2>
 
               <div className="space-y-5">
                 {/* Room Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Room Type
+                    Tipo de Espacio
                   </label>
                   <select
                     value={formData.roomType}
                     onChange={(e) => handleChange('roomType', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                   >
-                    <option value="living">Living Room</option>
-                    <option value="bedroom">Bedroom</option>
-                    <option value="kitchen">Kitchen</option>
-                    <option value="bathroom">Bathroom</option>
-                    <option value="office">Office</option>
-                    <option value="custom">Custom</option>
+                    <option value="living">Sala de Estar</option>
+                    <option value="bedroom">Recámara</option>
+                    <option value="kitchen">Cocina</option>
+                    <option value="bathroom">Baño</option>
+                    <option value="office">Oficina</option>
+                    <option value="custom">Personalizado</option>
                   </select>
                 </div>
 
                 {/* Area */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Area (m²)
+                    Área (m²)
                   </label>
                   <input
                     type="number"
@@ -116,31 +116,31 @@ export default function SpaceDesignQuotePage() {
                 {/* Scope */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Project Scope
+                    Alcance del Proyecto
                   </label>
                   <select
                     value={formData.scope}
                     onChange={(e) => handleChange('scope', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                   >
-                    <option value="full">Full Design</option>
-                    <option value="partial">Partial Design</option>
-                    <option value="consultation">Consultation Only</option>
+                    <option value="full">Diseño Completo</option>
+                    <option value="partial">Diseño Parcial</option>
+                    <option value="consultation">Solo Consultoría</option>
                   </select>
                 </div>
 
                 {/* Material Tier */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Material Tier
+                    Nivel de Material
                   </label>
                   <select
                     value={formData.materialTier}
                     onChange={(e) => handleChange('materialTier', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                   >
-                    <option value="basic">Basic</option>
-                    <option value="mid">Mid-Range</option>
+                    <option value="basic">Básico</option>
+                    <option value="mid">Intermedio</option>
                     <option value="premium">Premium</option>
                   </select>
                 </div>
@@ -154,14 +154,14 @@ export default function SpaceDesignQuotePage() {
                       onChange={(e) => handleChange('includesRenders', e.target.checked)}
                       className="w-4 h-4 text-gray-600 border-gray-300 rounded focus:ring-gray-400"
                     />
-                    <span className="text-sm text-gray-700">Include Renders</span>
+                    <span className="text-sm text-gray-700">Incluir Renders</span>
                   </label>
                 </div>
 
                 {/* Revision Rounds */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Revision Rounds (first 2 included)
+                    Rondas de Revisión (las primeras 2 incluidas)
                   </label>
                   <input
                     type="number"
@@ -180,11 +180,11 @@ export default function SpaceDesignQuotePage() {
                 className="w-full mt-6 py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-light"
               >
                 {isCalculating ? (
-                  <>Calculating...</>
+                  <>Calculando...</>
                 ) : (
                   <>
                     <Calculator className="w-4 h-4" />
-                    Calculate Quote
+                    Calcular Cotización
                   </>
                 )}
               </button>
@@ -201,7 +201,7 @@ export default function SpaceDesignQuotePage() {
           <div>
             {result && (
               <div className="bg-white rounded-lg border border-gray-200 p-6 sticky top-6">
-                <h2 className="text-lg font-light text-gray-900 mb-6">Quote Summary</h2>
+                <h2 className="text-lg font-light text-gray-900 mb-6">Resumen de Cotización</h2>
 
                 <div className="space-y-4 mb-6">
                   <div className="flex justify-between text-sm">
@@ -209,7 +209,7 @@ export default function SpaceDesignQuotePage() {
                     <span className="text-gray-900">${result.breakdown.base.toLocaleString()} MXN</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Area ({result.areaRate / 2000} m²)</span>
+                    <span className="text-gray-600">Área ({result.areaRate / 2000} m²)</span>
                     <span className="text-gray-900">${result.breakdown.area.toLocaleString()} MXN</span>
                   </div>
                   {result.breakdown.renders > 0 && (
@@ -220,12 +220,12 @@ export default function SpaceDesignQuotePage() {
                   )}
                   {result.breakdown.revisions > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Additional Revisions</span>
+                      <span className="text-gray-600">Revisiones Adicionales</span>
                       <span className="text-gray-900">${result.breakdown.revisions.toLocaleString()} MXN</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Design Fee</span>
+                    <span className="text-gray-600">Honorarios de Diseño</span>
                     <span className="text-gray-900">${result.breakdown.designFee.toLocaleString()} MXN</span>
                   </div>
                   <div className="border-t border-gray-200 pt-4 mt-4">
@@ -242,14 +242,14 @@ export default function SpaceDesignQuotePage() {
                   onClick={() => window.print()}
                   className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md transition-colors"
                 >
-                  Print / Export
+                  Imprimir / Exportar
                 </button>
               </div>
             )}
 
             {!result && (
               <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-                <p className="text-sm text-gray-400">Fill in the form and calculate to see quote</p>
+                <p className="text-sm text-gray-400">Completa el formulario y calcula para ver la cotización</p>
               </div>
             )}
           </div>

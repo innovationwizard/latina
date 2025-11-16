@@ -72,7 +72,7 @@ export default function FurnitureQuotePage() {
 
   const handleSaveQuote = async () => {
     if (!result || !projectId) {
-      setError('Please calculate a quote and select a project first');
+      setError('Por favor calcula una cotización y selecciona un proyecto primero');
       return;
     }
 
@@ -99,7 +99,7 @@ export default function FurnitureQuotePage() {
         throw new Error(data.error || 'Failed to save quote');
       }
 
-      alert('Quote saved successfully!');
+      alert('¡Cotización guardada exitosamente!');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -108,11 +108,11 @@ export default function FurnitureQuotePage() {
   };
 
   const addOns = [
-    { id: 'lighting', label: 'Lighting' },
-    { id: 'specialHardware', label: 'Special Hardware' },
-    { id: 'customFinishes', label: 'Custom Finishes' },
-    { id: 'softClose', label: 'Soft-Close Mechanisms' },
-    { id: 'glassDoors', label: 'Glass Doors' },
+    { id: 'lighting', label: 'Iluminación' },
+    { id: 'specialHardware', label: 'Herrajes Especiales' },
+    { id: 'customFinishes', label: 'Acabados Personalizados' },
+    { id: 'softClose', label: 'Mecanismos de Cierre Suave' },
+    { id: 'glassDoors', label: 'Puertas de Vidrio' },
   ];
 
   return (
@@ -125,59 +125,59 @@ export default function FurnitureQuotePage() {
             className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Quotes
+            Volver a Cotizaciones
           </Link>
-          <h1 className="text-3xl font-light text-gray-900 mb-2">Furniture Quote</h1>
-          <p className="text-sm text-gray-500">Calculate pricing for custom furniture pieces</p>
+          <h1 className="text-3xl font-light text-gray-900 mb-2">Cotización de Mobiliario</h1>
+          <p className="text-sm text-gray-500">Calcula precios para piezas de mobiliario personalizadas</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form */}
           <div className="space-y-6">
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-light text-gray-900 mb-6">Specifications</h2>
+              <h2 className="text-lg font-light text-gray-900 mb-6">Especificaciones</h2>
 
               <div className="space-y-5">
                 {/* Project Selector */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Project (optional)
+                    Proyecto (opcional)
                   </label>
                   <input
                     type="text"
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value)}
-                    placeholder="Project ID (UUID)"
+                    placeholder="ID del Proyecto (UUID)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                   />
                   <p className="text-xs text-gray-400 mt-1">
-                    Link this quote to a project by entering the project ID
+                    Vincula esta cotización a un proyecto ingresando el ID del proyecto
                   </p>
                 </div>
 
                 {/* Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Furniture Type
+                    Tipo de Mobiliario
                   </label>
                   <select
                     value={formData.type}
                     onChange={(e) => handleChange('type', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                   >
-                    <option value="wardrobe">Wardrobe</option>
-                    <option value="kitchen">Kitchen</option>
-                    <option value="bookshelf">Bookshelf</option>
-                    <option value="table">Table</option>
-                    <option value="cabinet">Cabinet</option>
-                    <option value="custom">Custom</option>
+                    <option value="wardrobe">Closet</option>
+                    <option value="kitchen">Cocina</option>
+                    <option value="bookshelf">Estantería</option>
+                    <option value="table">Mesa</option>
+                    <option value="cabinet">Gabinete</option>
+                    <option value="custom">Personalizado</option>
                   </select>
                 </div>
 
                 {/* Dimensions */}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Width (cm)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Ancho (cm)</label>
                     <input
                       type="number"
                       value={formData.width}
@@ -187,7 +187,7 @@ export default function FurnitureQuotePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Height (cm)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Alto (cm)</label>
                     <input
                       type="number"
                       value={formData.height}
@@ -197,7 +197,7 @@ export default function FurnitureQuotePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Depth (cm)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Profundidad (cm)</label>
                     <input
                       type="number"
                       value={formData.depth}
@@ -211,15 +211,15 @@ export default function FurnitureQuotePage() {
                 {/* Material Tier */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Material Tier
+                    Nivel de Material
                   </label>
                   <select
                     value={formData.materialTier}
                     onChange={(e) => handleChange('materialTier', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                   >
-                    <option value="basic">Basic</option>
-                    <option value="mid">Mid-Range</option>
+                    <option value="basic">Básico</option>
+                    <option value="mid">Intermedio</option>
                     <option value="premium">Premium</option>
                   </select>
                 </div>
@@ -227,7 +227,7 @@ export default function FurnitureQuotePage() {
                 {/* Complexity */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Complexity
+                    Complejidad
                   </label>
                   <select
                     value={formData.complexity}
@@ -235,15 +235,15 @@ export default function FurnitureQuotePage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
                   >
                     <option value="simple">Simple</option>
-                    <option value="moderate">Moderate</option>
-                    <option value="complex">Complex</option>
+                    <option value="moderate">Moderada</option>
+                    <option value="complex">Compleja</option>
                   </select>
                 </div>
 
                 {/* Add-ons */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Add-ons
+                    Complementos
                   </label>
                   <div className="space-y-2">
                     {addOns.map((addon) => (
@@ -270,11 +270,11 @@ export default function FurnitureQuotePage() {
                 className="w-full mt-6 py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-light"
               >
                 {isCalculating ? (
-                  <>Calculating...</>
+                  <>Calculando...</>
                 ) : (
                   <>
                     <Calculator className="w-4 h-4" />
-                    Calculate Quote
+                    Calcular Cotización
                   </>
                 )}
               </button>
@@ -291,7 +291,7 @@ export default function FurnitureQuotePage() {
           <div>
             {result && (
               <div className="bg-white rounded-lg border border-gray-200 p-6 sticky top-6">
-                <h2 className="text-lg font-light text-gray-900 mb-6">Quote Summary</h2>
+                <h2 className="text-lg font-light text-gray-900 mb-6">Resumen de Cotización</h2>
 
                 <div className="space-y-4 mb-6">
                   <div className="flex justify-between text-sm">
@@ -299,17 +299,17 @@ export default function FurnitureQuotePage() {
                     <span className="text-gray-900">${result.breakdown.base.toLocaleString()} MXN</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Volume</span>
+                    <span className="text-gray-600">Volumen</span>
                     <span className="text-gray-900">${result.breakdown.volume.toLocaleString()} MXN</span>
                   </div>
                   {result.breakdown.addOns > 0 && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Add-ons</span>
+                      <span className="text-gray-600">Complementos</span>
                       <span className="text-gray-900">${result.breakdown.addOns.toLocaleString()} MXN</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Labor</span>
+                    <span className="text-gray-600">Mano de Obra</span>
                     <span className="text-gray-900">${result.breakdown.labor.toLocaleString()} MXN</span>
                   </div>
                   <div className="border-t border-gray-200 pt-4 mt-4">
@@ -327,7 +327,7 @@ export default function FurnitureQuotePage() {
                     onClick={() => window.print()}
                     className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md transition-colors"
                   >
-                    Print / Export
+                    Imprimir / Exportar
                   </button>
                   {projectId && (
                     <button
@@ -335,7 +335,7 @@ export default function FurnitureQuotePage() {
                       disabled={isSaving}
                       className="w-full py-2 text-sm bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50"
                     >
-                      {isSaving ? 'Saving...' : 'Save to Project'}
+                      {isSaving ? 'Guardando...' : 'Guardar en Proyecto'}
                     </button>
                   )}
                 </div>
@@ -344,7 +344,7 @@ export default function FurnitureQuotePage() {
 
             {!result && (
               <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-                <p className="text-sm text-gray-400">Fill in the form and calculate to see quote</p>
+                <p className="text-sm text-gray-400">Completa el formulario y calcula para ver la cotización</p>
               </div>
             )}
           </div>

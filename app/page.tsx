@@ -3,19 +3,19 @@ import Link from "next/link";
 const sections = [
   {
     id: "projects",
-    label: "Projects",
+    label: "Proyectos",
     href: "#projects",
     subtle: true,
   },
   {
     id: "quotes",
-    label: "Quotes",
+    label: "Cotizaciones",
     href: "#quotes",
     subtle: true,
   },
   {
     id: "tools",
-    label: "Tools",
+    label: "Herramientas",
     href: "#tools",
     subtle: true,
   },
@@ -52,43 +52,43 @@ export default function Home() {
             <div className="space-y-8">
               <div className="space-y-3">
                 <p className="text-xs uppercase tracking-[0.25em] text-neutral-500">
-                  Studio Console
+                  Consola del Estudio
                 </p>
                 <h1 className="text-3xl md:text-4xl font-light leading-snug text-neutral-900">
-                  Quiet control for{" "}
+                  Control discreto para{" "}
                   <span className="underline decoration-neutral-400/60 underline-offset-4">
-                    rooms
+                    espacios
                   </span>{" "}
-                  and{" "}
+                  y{" "}
                   <span className="underline decoration-neutral-400/60 underline-offset-4">
-                    pieces
+                    piezas
                   </span>
                   .
                 </h1>
               </div>
               <p className="text-sm md:text-base text-neutral-500 max-w-xl leading-relaxed">
-                Capture a brief, sketch the intention, and arrive at a number
-                you can stand behind. Designed as an internal surface for
-                designers who already think in layers.
+                Captura un brief, esboza la intención y llega a un número
+                con el que puedas respaldar. Diseñado como una superficie interna para
+                diseñadores que ya piensan en capas.
               </p>
               <div className="flex flex-wrap gap-3 text-xs">
                 <Link
                   href="/projects"
                   className="inline-flex items-center justify-center rounded-full border border-neutral-900 bg-neutral-900 px-4 py-2 text-neutral-50 hover:bg-neutral-50 hover:text-neutral-900 transition-colors"
                 >
-                  Projects
+                  Proyectos
                 </Link>
                 <Link
                   href="/quotes"
                   className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
                 >
-                  Create quote
+                  Crear cotización
                 </Link>
                 <Link
                   href="/tools/enhancer"
                   className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
                 >
-                  Render assistant
+                  Asistente de render
                 </Link>
               </div>
             </div>
@@ -97,17 +97,17 @@ export default function Home() {
               <div className="border border-neutral-200 rounded-2xl bg-white/70 backdrop-blur-sm p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="uppercase tracking-[0.2em] text-[0.6rem]">
-                    Snapshot
+                    Resumen
                   </span>
                   <span className="text-[0.6rem] text-neutral-400">
-                    Internal view
+                    Vista interna
                   </span>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-neutral-400">This week</span>
+                    <span className="text-neutral-400">Esta semana</span>
                     <span className="text-neutral-900 text-sm">
-                      Quotes, not posts.
+                      Cotizaciones, no publicaciones.
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-3 text-[0.7rem]">
@@ -115,27 +115,27 @@ export default function Home() {
                       <div className="text-neutral-900 text-base font-light">
                         0
                       </div>
-                      <div className="text-neutral-400">Open rooms</div>
+                      <div className="text-neutral-400">Espacios abiertos</div>
                     </div>
                     <div className="border border-neutral-200 rounded-xl px-3 py-3 space-y-1">
                       <div className="text-neutral-900 text-base font-light">
                         0
                       </div>
-                      <div className="text-neutral-400">Pieces in study</div>
+                      <div className="text-neutral-400">Piezas en estudio</div>
                     </div>
                     <div className="border border-neutral-200 rounded-xl px-3 py-3 space-y-1">
                       <div className="text-neutral-900 text-base font-light">
                         0
                       </div>
-                      <div className="text-neutral-400">Sent this week</div>
+                      <div className="text-neutral-400">Enviadas esta semana</div>
                     </div>
                   </div>
                 </div>
               </div>
 
               <p className="text-[0.7rem] text-neutral-400 leading-relaxed">
-                This console is private to the studio. Anything client-facing is
-                a deliberate export.
+                Esta consola es privada del estudio. Cualquier cosa orientada al cliente es
+                una exportación deliberada.
               </p>
             </div>
           </div>
@@ -149,11 +149,11 @@ export default function Home() {
           <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-                Quotes
+                Cotizaciones
               </p>
               <p className="text-sm text-neutral-500 mt-2 max-w-md">
-                Two paths: a room as a whole, or a single piece. Begin where the
-                conversation actually starts.
+                Dos caminos: un espacio completo o una pieza individual. Comienza donde
+                realmente inicia la conversación.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 text-xs">
@@ -161,13 +161,13 @@ export default function Home() {
                 href="/quotes/space"
                 className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
               >
-                Space design quote
+                Cotización diseño de espacios
               </Link>
               <Link
                 href="/quotes/furniture"
                 className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
               >
-                Furniture piece quote
+                Cotización pieza de mobiliario
               </Link>
             </div>
           </div>
@@ -181,11 +181,11 @@ export default function Home() {
           <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-                Tools
+                Herramientas
               </p>
               <p className="text-sm text-neutral-500 mt-2 max-w-md">
-                Small assistants for render, notes, and files. Useful, but
-                quiet.
+                Pequeños asistentes para render, notas y archivos. Útiles, pero
+                discretos.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 text-xs">
@@ -193,7 +193,7 @@ export default function Home() {
                 href="/tools/enhancer"
                 className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
               >
-                Proposal image enhancer
+                Mejorador de imágenes de propuesta
               </Link>
             </div>
           </div>

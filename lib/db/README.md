@@ -40,36 +40,42 @@ DB_USER=your-db-user
 DB_PASSWORD=your-db-password
 DB_SSL=true
 
-# AWS S3
+# AWS S3 (all 5 buckets required)
 AWS_REGION=us-east-2
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 S3_UPLOAD_BUCKET=latina-uploads
+S3_IMAGES_BUCKET=latina-images
 LEONARDO_S3_BUCKET=latina-leonardo-images
+S3_DESIGNS_BUCKET=latina-designs
+S3_NOT_IMAGES_BUCKET=latina-not-images
 
 # Leonardo AI
 LEONARDO_API_KEY=your-leonardo-api-key
 ```
 
-## Setup Steps
+## Quick Setup Checklist
 
-1. **Create AWS RDS PostgreSQL instance**
+✅ **See `docs/database-setup-guide.md` for complete step-by-step instructions**
+
+1. **Create AWS RDS PostgreSQL instance** (see detailed guide)
    - Recommended: db.t3.micro or larger
    - Enable public access if needed (or use VPC)
    - Note the endpoint, port, and credentials
 
-2. **Create S3 Buckets**
-   - `latina-uploads` - For original image uploads
-   - `latina-leonardo-images` - For enhanced images from Leonardo AI
-   - Configure CORS and bucket policies as needed
+2. **Configure Security Group**
+   - Allow inbound PostgreSQL (port 5432) from your IP or application
 
-3. **Run the schema**
+3. **Create database and run schema**
    ```bash
+   # Create database
+   psql -h your-rds-endpoint -U your-user -d postgres -c "CREATE DATABASE latina;"
+   
+   # Run schema
    psql -h your-rds-endpoint -U your-user -d latina -f lib/db/schema.sql
    ```
-   Or use a database client like pgAdmin or DBeaver
 
-4. **Set environment variables** in your deployment platform (Vercel, etc.)
+4. **Set environment variables** (see below)
 
 5. **Test the connection**
    - The app will automatically test the connection on first API call

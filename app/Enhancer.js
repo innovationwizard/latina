@@ -160,21 +160,10 @@ export default function Enhancer() {
   // ============================================================================
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] flex flex-col">
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-2xl">
-          
-          {/* Step 1: Upload */}
-          {!enhancedImage && (
-            <div className="space-y-6">
-              <h1 className="text-[2.75rem] font-bold text-center text-[#1e2a38]">
-                L A T I N A
-              </h1>
-              <p className="mt-2 text-lg font-light text-gray-500 text-center">
-                AI Powered Image Enhancer
-              </p>
-
+    <div className="w-full">
+      {/* Step 1: Upload */}
+      {!enhancedImage && (
+        <div className="space-y-6">
               <div
                 className={`
                   relative border-2 border-dashed rounded-lg p-12 text-center
@@ -245,9 +234,9 @@ export default function Enhancer() {
               {preview && !isProcessing && (
                 <button
                   onClick={enhanceImage}
-                  className="w-full py-4 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors text-lg font-light"
+                  className="w-full py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-light"
                 >
-                  Make the magic happen!
+                  Enhance Image
                 </button>
               )}
 
@@ -269,52 +258,44 @@ export default function Enhancer() {
             </div>
           )}
 
-          {/* Step 2: Result */}
-          {enhancedImage && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-light text-gray-800 text-center">
-                Your enhanced image:
-              </h2>
+      {/* Step 2: Result */}
+      {enhancedImage && (
+        <div className="space-y-6">
+          <h2 className="text-lg font-light text-gray-900">
+            Enhanced Image
+          </h2>
 
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <img 
-                  src={enhancedImage} 
-                  alt="Enhanced" 
-                  className="w-full rounded-lg"
-                />
-              </div>
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <img 
+              src={enhancedImage} 
+              alt="Enhanced" 
+              className="w-full rounded-lg"
+            />
+          </div>
 
-              {/* Download Button */}
-              <button
-                onClick={downloadImage}
-                className="w-full py-4 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors text-lg font-light flex items-center justify-center gap-2"
-              >
-                <Download className="w-5 h-5" />
-                Download
-              </button>
+          {/* Download Button */}
+          <button
+            onClick={downloadImage}
+            className="w-full py-3 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-light flex items-center justify-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download
+          </button>
 
-              {/* Start Over */}
-              <button
-                onClick={() => {
-                  setFile(null);
-                  setPreview(null);
-                  setEnhancedImage(null);
-                  setError(null);
-                }}
-                className="w-full py-3 text-gray-600 hover:text-gray-800 transition-colors font-light"
-              >
-                Enhance another image
-              </button>
-            </div>
-          )}
+          {/* Start Over */}
+          <button
+            onClick={() => {
+              setFile(null);
+              setPreview(null);
+              setEnhancedImage(null);
+              setError(null);
+            }}
+            className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md transition-colors"
+          >
+            Enhance Another Image
+          </button>
         </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="py-6 text-center text-sm">
-        <span className="text-gray-400">Powered by </span>
-        <span className="text-red-400">Artificial Intelligence Developments</span>
-      </footer>
+      )}
     </div>
   );
 }

@@ -69,9 +69,7 @@ export default function Home() {
                 </h1>
               </div>
               <p className="text-sm md:text-base text-neutral-500 max-w-xl leading-relaxed">
-                Captura un brief, esboza la intención y llega a un número
-                con el que puedas respaldar. Diseñado como una superficie interna para
-                diseñadores que ya piensan en capas.
+                Toda la información de cada proyecto en un solo lugar.
               </p>
               <div className="flex flex-wrap gap-3 text-xs">
                 <Link

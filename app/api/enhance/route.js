@@ -17,6 +17,7 @@ const NEGATIVE_PROMPT =
   'drawn, sketch, illustration, cartoon, blurry, distorted, warped, ugly, noisy, grainy, unreal';
 
 const S3_UPLOAD_BUCKET = process.env.S3_UPLOAD_BUCKET || 'latina-uploads';
+const LEONARDO_S3_BUCKET = process.env.LEONARDO_S3_BUCKET || 'latina-leonardo-images';
 const S3_REGION = process.env.AWS_REGION || 'us-east-2';
 const hasExplicitCreds =
   Boolean(process.env.AWS_ACCESS_KEY_ID) && Boolean(process.env.AWS_SECRET_ACCESS_KEY);
@@ -153,14 +154,15 @@ async function uploadToLeonardo(imageBuffer, extension) {
   }
 }
 
-async function backupUploadToS3(buffer, filename, mimeType) {
+async function backupUploadToS3(buffer, filename, mimeType, projectId = null) {
   if (!S3_UPLOAD_BUCKET) {
     console.warn('S3_UPLOAD_BUCKET not configured; skipping archive backup.');
     return null;
   }
 
   const safeName = filename ? filename.replace(/[^a-zA-Z0-9._-]/g, '-') : 'upload.jpg';
-  const key = `uploads/${Date.now()}-${safeName}`;
+  const prefix = projectId ? `uploads/${projectId}` : 'uploads';
+  const key = `${prefix}/${Date.now()}-${safeName}`;
 
   await s3Client.send(
     new PutObjectCommand({
@@ -174,8 +176,45 @@ async function backupUploadToS3(buffer, filename, mimeType) {
   return {
     bucket: S3_UPLOAD_BUCKET,
     key,
-    location: `s3://${S3_UPLOAD_BUCKET}/${key}`,
+    location: `https://${S3_UPLOAD_BUCKET}.s3.${S3_REGION}.amazonaws.com/${key}`,
   };
+}
+
+async function saveEnhancedImageToS3(imageUrl, projectId, filename) {
+  if (!LEONARDO_S3_BUCKET) {
+    console.warn('LEONARDO_S3_BUCKET not configured; skipping enhanced image save.');
+    return null;
+  }
+
+  try {
+    // Download the enhanced image from Leonardo
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error('Failed to download enhanced image');
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    const prefix = projectId ? `enhanced/${projectId}` : 'enhanced';
+    const key = `${prefix}/${Date.now()}-${filename || 'enhanced.jpg'}`;
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: LEONARDO_S3_BUCKET,
+        Key: key,
+        Body: buffer,
+        ContentType: 'image/jpeg',
+      })
+    );
+
+    return {
+      bucket: LEONARDO_S3_BUCKET,
+      key,
+      location: `https://${LEONARDO_S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${key}`,
+    };
+  } catch (error) {
+    console.error('Error saving enhanced image to S3:', error);
+    return null;
+  }
 }
 
 async function generateEnhancedImage(imageId, width, height, mode) {
@@ -252,6 +291,8 @@ export async function POST(request) {
     const file = formData.get('image');
     const modeValue = (formData.get('mode') || 'structure').toString();
     const mode = modeValue === 'surfaces' ? 'surfaces' : 'structure';
+    const projectId = formData.get('project_id');
+    const siteVisitId = formData.get('site_visit_id');
 
     if (!file) {
       return NextResponse.json({ error: 'No image' }, { status: 400 });
@@ -260,10 +301,11 @@ export async function POST(request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    let originalS3Info = null;
     try {
-      const archiveInfo = await backupUploadToS3(buffer, file.name, file.type);
-      if (archiveInfo) {
-        console.log('Archived original upload to S3:', archiveInfo.location);
+      originalS3Info = await backupUploadToS3(buffer, file.name, file.type, projectId);
+      if (originalS3Info) {
+        console.log('Archived original upload to S3:', originalS3Info.location);
       }
     } catch (archiveError) {
       console.error('Failed to archive original upload:', archiveError);
@@ -278,7 +320,23 @@ export async function POST(request) {
     console.log('Polling...');
     const enhancedUrl = await pollForCompletion(generationId);
 
-    return NextResponse.json({ enhancedUrl });
+    // Save enhanced image to Leonardo S3 bucket
+    let enhancedS3Info = null;
+    if (projectId) {
+      enhancedS3Info = await saveEnhancedImageToS3(enhancedUrl, projectId, file.name);
+      if (enhancedS3Info) {
+        console.log('Saved enhanced image to S3:', enhancedS3Info.location);
+      }
+    }
+
+    return NextResponse.json({
+      enhancedUrl,
+      originalS3Url: originalS3Info?.location || null,
+      enhancedS3Url: enhancedS3Info?.location || null,
+      leonardoImageId: imageId,
+      projectId: projectId || null,
+      siteVisitId: siteVisitId || null,
+    });
   } catch (error) {
     console.error('Error:', error);
     return NextResponse.json(

@@ -17,7 +17,9 @@ export default function FurnitureQuotePage() {
 
   const [result, setResult] = useState<any>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string>('');
 
   const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -68,6 +70,43 @@ export default function FurnitureQuotePage() {
     }
   };
 
+  const handleSaveQuote = async () => {
+    if (!result || !projectId) {
+      setError('Please calculate a quote and select a project first');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/quotes/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          quote_type: 'furniture',
+          quote_data: result,
+          total_amount: result.total,
+          currency: 'MXN',
+          status: 'draft',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save quote');
+      }
+
+      alert('Quote saved successfully!');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const addOns = [
     { id: 'lighting', label: 'Lighting' },
     { id: 'specialHardware', label: 'Special Hardware' },
@@ -99,6 +138,23 @@ export default function FurnitureQuotePage() {
               <h2 className="text-lg font-light text-gray-900 mb-6">Specifications</h2>
 
               <div className="space-y-5">
+                {/* Project Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Project (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={projectId}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    placeholder="Project ID (UUID)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Link this quote to a project by entering the project ID
+                  </p>
+                </div>
+
                 {/* Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -266,12 +322,23 @@ export default function FurnitureQuotePage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => window.print()}
-                  className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md transition-colors"
-                >
-                  Print / Export
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => window.print()}
+                    className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md transition-colors"
+                  >
+                    Print / Export
+                  </button>
+                  {projectId && (
+                    <button
+                      onClick={handleSaveQuote}
+                      disabled={isSaving}
+                      className="w-full py-2 text-sm bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    >
+                      {isSaving ? 'Saving...' : 'Save to Project'}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 

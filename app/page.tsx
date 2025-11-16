@@ -1,4 +1,5 @@
 import Link from "next/link";
+import UserMenu from "./components/UserMenu";
 
 const sections = [
   {
@@ -39,6 +40,7 @@ export default function Home() {
                 {section.label}
               </a>
             ))}
+            <UserMenu />
           </nav>
         </div>
       </header>
@@ -52,10 +54,10 @@ export default function Home() {
             <div className="space-y-8">
               <div className="space-y-3">
                 <p className="text-xs uppercase tracking-[0.25em] text-neutral-500">
-                  Consola del Estudio
+                  Panel Principal
                 </p>
                 <h1 className="text-3xl md:text-4xl font-light leading-snug text-neutral-900">
-                  Control discreto para{" "}
+                  Diseño de interiores para{" "}
                   <span className="underline decoration-neutral-400/60 underline-offset-4">
                     espacios
                   </span>{" "}
@@ -107,7 +109,7 @@ export default function Home() {
                   <div className="flex items-baseline justify-between">
                     <span className="text-neutral-400">Esta semana</span>
                     <span className="text-neutral-900 text-sm">
-                      Cotizaciones, no publicaciones.
+                      Cotizaciones.
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-3 text-[0.7rem]">
@@ -115,13 +117,13 @@ export default function Home() {
                       <div className="text-neutral-900 text-base font-light">
                         0
                       </div>
-                      <div className="text-neutral-400">Espacios abiertos</div>
+                      <div className="text-neutral-400">Espacios</div>
                     </div>
                     <div className="border border-neutral-200 rounded-xl px-3 py-3 space-y-1">
                       <div className="text-neutral-900 text-base font-light">
                         0
                       </div>
-                      <div className="text-neutral-400">Piezas en estudio</div>
+                      <div className="text-neutral-400">Piezas</div>
                     </div>
                     <div className="border border-neutral-200 rounded-xl px-3 py-3 space-y-1">
                       <div className="text-neutral-900 text-base font-light">
@@ -134,8 +136,7 @@ export default function Home() {
               </div>
 
               <p className="text-[0.7rem] text-neutral-400 leading-relaxed">
-                Esta consola es privada del estudio. Cualquier cosa orientada al cliente es
-                una exportación deliberada.
+                Esta información es privada, no de acceso público.
               </p>
             </div>
           </div>
@@ -152,8 +153,7 @@ export default function Home() {
                 Cotizaciones
               </p>
               <p className="text-sm text-neutral-500 mt-2 max-w-md">
-                Dos caminos: un espacio completo o una pieza individual. Comienza donde
-                realmente inicia la conversación.
+                Un espacio completo o una pieza individual.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 text-xs">

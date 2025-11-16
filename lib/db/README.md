@@ -52,6 +52,9 @@ S3_NOT_IMAGES_BUCKET=latina-not-images
 
 # Leonardo AI
 LEONARDO_API_KEY=your-leonardo-api-key
+
+# Authentication
+AUTH_SECRET=your-very-long-random-secret-key-minimum-32-characters
 ```
 
 ## Quick Setup Checklist

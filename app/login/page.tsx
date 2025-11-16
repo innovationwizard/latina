@@ -49,7 +49,7 @@ export default function LoginPage() {
             </div>
           </div>
           <h1 className="text-2xl font-light text-gray-900 mb-2">
-            Acceso al Estudio
+            Acceso Privado
           </h1>
           <p className="text-sm text-gray-500">
             Ingresa tus credenciales para continuar
@@ -118,7 +118,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-xs text-gray-400 text-center mt-6">
-          Herramienta interna del estudio
+          Powered by <span style={{ color: '#dc2626' }}>Artificial Intelligence Developments</span> © 2025
         </p>
       </div>
     </div>

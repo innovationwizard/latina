@@ -184,8 +184,7 @@ export default function Home() {
                 Herramientas
               </p>
               <p className="text-sm text-neutral-500 mt-2 max-w-md">
-                Pequeños asistentes para render, notas y archivos. Útiles, pero
-                discretos.
+                Pequeños asistentes para render, notas y archivos. 
               </p>
             </div>
             <div className="flex flex-wrap gap-3 text-xs">

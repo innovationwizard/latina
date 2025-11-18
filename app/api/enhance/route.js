@@ -19,6 +19,12 @@ const NEGATIVE_PROMPT =
 const hasExplicitCreds =
   Boolean(process.env.AWS_ACCESS_KEY_ID) && Boolean(process.env.AWS_SECRET_ACCESS_KEY);
 
+// Log bucket configuration for debugging
+console.log('S3 Bucket Configuration:');
+console.log(`  UPLOADS: ${S3_BUCKETS.UPLOADS}`);
+console.log(`  LEONARDO: ${S3_BUCKETS.LEONARDO}`);
+console.log(`  Region: ${S3_REGION}`);
+
 const s3Client = new S3Client({
   region: S3_REGION,
   credentials: hasExplicitCreds
@@ -39,8 +45,8 @@ function buildGenerationPayload(imageId, width, height, mode) {
     num_images: 1,
     scheduler: 'KLMS',
     init_image_id: imageId,
-    width: Math.min(width, 1024),
-    height: Math.min(height, 1024),
+    width: width, // Use the actual dimensions (already calculated to fit within 1024)
+    height: height, // Use the actual dimensions (already calculated to fit within 1024)
     init_strength: isStructure ? 0.4 : 0.7,
     alchemy: !isStructure,
   };
@@ -66,16 +72,73 @@ function buildGenerationPayload(imageId, width, height, mode) {
 
 async function uploadToLeonardo(imageBuffer, extension) {
   try {
-    // 1. Process the image
+    // 1. Get original image metadata to preserve aspect ratio
+    const image = sharp(imageBuffer);
+    const metadata = await image.metadata();
+    const originalWidth = metadata.width;
+    const originalHeight = metadata.height;
+    
+    console.log(`Original dimensions: ${originalWidth}x${originalHeight}`);
+    
+    // 2. Calculate target dimensions that fit within 1024x1024 while preserving aspect ratio
+    const maxDimension = 1024;
+    const aspectRatio = originalWidth / originalHeight;
+    
+    let targetWidth, targetHeight;
+    
+    if (originalWidth <= maxDimension && originalHeight <= maxDimension) {
+      // Image is already small enough, use original dimensions
+      targetWidth = originalWidth;
+      targetHeight = originalHeight;
+    } else if (originalWidth > originalHeight) {
+      // Landscape: width is the limiting factor
+      targetWidth = maxDimension;
+      targetHeight = Math.round(maxDimension / aspectRatio);
+    } else {
+      // Portrait or square: height is the limiting factor
+      targetHeight = maxDimension;
+      targetWidth = Math.round(maxDimension * aspectRatio);
+    }
+    
+    // Ensure dimensions are multiples of 8 (Leonardo requirement)
+    targetWidth = Math.floor(targetWidth / 8) * 8;
+    targetHeight = Math.floor(targetHeight / 8) * 8;
+    
+    // Ensure minimum dimensions (at least 512 on the smaller side)
+    if (targetWidth < 512) targetWidth = 512;
+    if (targetHeight < 512) targetHeight = 512;
+    
+    // Re-ensure multiples of 8 after minimum check
+    targetWidth = Math.floor(targetWidth / 8) * 8;
+    targetHeight = Math.floor(targetHeight / 8) * 8;
+    
+    console.log(`Target dimensions (preserving aspect ratio): ${targetWidth}x${targetHeight}`);
+    
+    // 3. Resize and process the image
     console.log('Preprocessing image...');
-    const processedBuffer = await sharp(imageBuffer)
-      .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+    const processedBuffer = await image
+      .resize(targetWidth, targetHeight, { 
+        fit: 'inside', 
+        withoutEnlargement: true 
+      })
       .jpeg({ quality: 85 })
       .toBuffer();
+    
+    // Verify actual output dimensions (may differ slightly due to fit: 'inside')
+    const processedMetadata = await sharp(processedBuffer).metadata();
+    const actualWidth = processedMetadata.width;
+    const actualHeight = processedMetadata.height;
+    
+    // Use actual dimensions (rounded to multiples of 8) for Leonardo
+    const finalWidth = Math.floor(actualWidth / 8) * 8;
+    const finalHeight = Math.floor(actualHeight / 8) * 8;
+    
+    console.log(`Actual processed dimensions: ${actualWidth}x${actualHeight}`);
+    console.log(`Final dimensions for Leonardo: ${finalWidth}x${finalHeight}`);
 
     console.log('Image processed, getting upload URL...');
 
-    // 2. Get upload URL from Leonardo
+    // 4. Get upload URL from Leonardo
     const initResponse = await fetch(`${BASE_URL}/init-image`, {
       method: 'POST',
       headers: {
@@ -144,7 +207,12 @@ async function uploadToLeonardo(imageBuffer, extension) {
 
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    return imageId;
+    // Return imageId and actual dimensions (preserving aspect ratio)
+    return {
+      imageId,
+      width: finalWidth,
+      height: finalHeight,
+    };
   } catch (error) {
     console.error('Upload error:', error);
     throw new Error(error.message);
@@ -153,13 +221,28 @@ async function uploadToLeonardo(imageBuffer, extension) {
 
 async function backupUploadToS3(buffer, filename, mimeType, projectId = null) {
   // Original uploads go to latina-uploads bucket
+  const bucketName = S3_BUCKETS.UPLOADS;
+  
+  // Validate bucket name
+  if (!bucketName || bucketName === 'S3_UPLOAD_BUCKET' || bucketName.includes('S3_')) {
+    console.error(`Invalid bucket name: ${bucketName}. Using fallback 'latina-uploads'`);
+    const fallbackBucket = 'latina-uploads';
+    console.log(`Using bucket: ${fallbackBucket}`);
+  }
+  
   const safeName = filename ? filename.replace(/[^a-zA-Z0-9._-]/g, '-') : 'upload.jpg';
   const prefix = projectId ? `uploads/${projectId}/originals` : 'uploads/originals';
   const key = `${prefix}/${Date.now()}-${safeName}`;
 
+  const finalBucket = (bucketName && bucketName !== 'S3_UPLOAD_BUCKET' && !bucketName.includes('S3_')) 
+    ? bucketName 
+    : 'latina-uploads';
+  
+  console.log(`Uploading to bucket: ${finalBucket}, key: ${key}`);
+
   await s3Client.send(
     new PutObjectCommand({
-      Bucket: S3_BUCKETS.UPLOADS,
+      Bucket: finalBucket,
       Key: key,
       Body: buffer,
       ContentType: mimeType || 'application/octet-stream',
@@ -167,9 +250,9 @@ async function backupUploadToS3(buffer, filename, mimeType, projectId = null) {
   );
 
   return {
-    bucket: S3_BUCKETS.UPLOADS,
+    bucket: finalBucket,
     key,
-    location: getS3Url(S3_BUCKETS.UPLOADS, key),
+    location: getS3Url(finalBucket, key),
   };
 }
 
@@ -183,13 +266,20 @@ async function saveEnhancedImageToS3(imageUrl, projectId, filename) {
     const buffer = Buffer.from(await response.arrayBuffer());
 
     // Enhanced images go to latina-leonardo-images bucket
+    const bucketName = S3_BUCKETS.LEONARDO;
+    const finalBucket = (bucketName && bucketName !== 'LEONARDO_S3_BUCKET' && !bucketName.includes('LEONARDO_S3')) 
+      ? bucketName 
+      : 'latina-leonardo-images';
+    
     const safeName = filename ? filename.replace(/[^a-zA-Z0-9._-]/g, '-') : 'enhanced.jpg';
     const prefix = projectId ? `enhanced/${projectId}` : 'enhanced';
     const key = `${prefix}/${Date.now()}-${safeName}`;
 
+    console.log(`Saving enhanced image to bucket: ${finalBucket}, key: ${key}`);
+
     await s3Client.send(
       new PutObjectCommand({
-        Bucket: S3_BUCKETS.LEONARDO,
+        Bucket: finalBucket,
         Key: key,
         Body: buffer,
         ContentType: 'image/jpeg',
@@ -197,9 +287,9 @@ async function saveEnhancedImageToS3(imageUrl, projectId, filename) {
     );
 
     return {
-      bucket: S3_BUCKETS.LEONARDO,
+      bucket: finalBucket,
       key,
-      location: getS3Url(S3_BUCKETS.LEONARDO, key),
+      location: getS3Url(finalBucket, key),
     };
   } catch (error) {
     console.error('Error saving enhanced image to S3:', error);
@@ -302,10 +392,12 @@ export async function POST(request) {
     }
 
     console.log('Uploading to Leonardo...');
-    const imageId = await uploadToLeonardo(buffer, 'jpg');
+    const uploadResult = await uploadToLeonardo(buffer, 'jpg');
+    const { imageId, width, height } = uploadResult;
 
+    console.log(`Using dimensions: ${width}x${height} (preserving original aspect ratio)`);
     console.log('Starting generation...');
-    const generationId = await generateEnhancedImage(imageId, 1024, 1024, mode);
+    const generationId = await generateEnhancedImage(imageId, width, height, mode);
 
     console.log('Polling...');
     const enhancedUrl = await pollForCompletion(generationId);

@@ -232,10 +232,17 @@ export default function ProjectDetailPage() {
                   <p className="text-sm text-gray-600 whitespace-pre-wrap">{project.notes}</p>
                 </div>
               )}
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-gray-200 space-y-3">
+                <Link
+                  href={`/projects/${projectId}/quotation`}
+                  className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+                >
+                  <Calculator className="w-4 h-4" />
+                  Ver Cotización
+                </Link>
                 <Link
                   href={`/projects/${projectId}/images`}
-                  className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4"
+                  className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
                 >
                   <ImageIcon className="w-4 h-4" />
                   Ver Comparación de Imágenes

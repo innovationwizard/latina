@@ -88,3 +88,40 @@ AUTH_SECRET=your-very-long-random-secret-key-minimum-32-characters
 
 For future schema changes, create migration files in `lib/db/migrations/` and apply them manually or with a migration tool.
 
+### Applied Migrations
+
+1. **`001_add_users_table.sql`** - Adds `users` table for authentication
+2. **`002_add_materials_table.sql`** - Adds `materials` table with initial data
+3. **`003_add_image_versions.sql`** - Adds version tracking to `images` table
+   - `parent_image_id`: Links enhanced images to originals
+   - `enhancement_type`: Type of enhancement (general, targeted, color, lighting, elements)
+   - `enhancement_metadata`: JSONB field for full enhancement parameters
+   - `version`: Version number (auto-incremented per parent)
+4. **`004_add_elements_table.sql`** - Adds `elements` table with initial data for furniture/decor items
+5. **`005_add_spaces_and_quotation_engine.sql`** - Adds quotation engine tables:
+   - `spaces`: Project spaces/rooms
+   - `quotations`: Main quotation records
+   - `quotation_versions`: Versioned quotations
+   - `quotation_items`: Individual line items
+   - `image_spaces`: Many-to-many relationship between images and spaces
+   - `cost_units`: Unit of measurement library
+   - `material_costs`: Material cost library
+   - `element_costs`: Element/furniture cost library
+   - `labor_costs`: Labor cost library
+6. **`006_seed_initial_costs.sql`** - Seeds initial costs (1.00) and prices (2.00) for all materials and elements
+
+### Running Migrations
+
+```bash
+# Run a specific migration
+node scripts/run-migration.js lib/db/migrations/003_add_image_versions.sql
+
+# Run all migrations in order
+node scripts/run-migration.js lib/db/migrations/001_add_users_table.sql
+node scripts/run-migration.js lib/db/migrations/002_add_materials_table.sql
+node scripts/run-migration.js lib/db/migrations/003_add_image_versions.sql
+node scripts/run-migration.js lib/db/migrations/004_add_elements_table.sql
+node scripts/run-migration.js lib/db/migrations/005_add_spaces_and_quotation_engine.sql
+node scripts/run-migration.js lib/db/migrations/006_seed_initial_costs.sql
+```
+

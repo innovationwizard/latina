@@ -28,7 +28,7 @@ export default function Home() {
       <header className="border-b border-neutral-200/70 bg-[#F8F6F2]/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <div className="tracking-[0.35em] text-xs uppercase text-neutral-500">
-            LATINA
+            LATINA BUSINESS DASHBOARD
           </div>
           <nav className="flex items-center gap-6 text-xs text-neutral-500">
             {sections.map((section) => (
@@ -89,6 +89,30 @@ export default function Home() {
                   className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
                 >
                   Asistente de render
+                </Link>
+                <Link
+                  href="/admin/materials"
+                  className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
+                >
+                  Biblioteca de Materiales
+                </Link>
+                <Link
+                  href="/admin/elements"
+                  className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
+                >
+                  Biblioteca de Elementos
+                </Link>
+                <Link
+                  href="/admin/cost-libraries/material-costs"
+                  className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
+                >
+                  Costos de Materiales
+                </Link>
+                <Link
+                  href="/admin/cost-libraries/element-costs"
+                  className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
+                >
+                  Costos de Elementos
                 </Link>
               </div>
             </div>

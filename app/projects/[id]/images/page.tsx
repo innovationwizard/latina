@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Tag } from 'lucide-react';
+import ImageVersionNavigator from '@/app/components/ImageVersionNavigator';
+import ImageSpaceAssignment from '@/app/components/ImageSpaceAssignment';
 
 type Image = {
   id: string;
@@ -12,6 +14,7 @@ type Image = {
   enhanced_url: string | null;
   filename: string | null;
   created_at: string;
+  parent_image_id?: string | null;
 };
 
 export default function ProjectImagesPage() {
@@ -20,7 +23,8 @@ export default function ProjectImagesPage() {
   const projectId = params.id as string;
   const [images, setImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedImage, setSelectedImage] = useState<Image | null>(null);
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const [assigningImageId, setAssigningImageId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchImages();
@@ -29,26 +33,40 @@ export default function ProjectImagesPage() {
   const fetchImages = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/images?project_id=${projectId}&image_type=enhanced`);
+      const response = await fetch(`/api/images?project_id=${projectId}`);
       const data = await response.json();
       
-      // Get pairs of original and enhanced images
-      const enhancedImages = data.images.filter((img: Image) => img.image_type === 'enhanced');
-      const originalImages = data.images.filter((img: Image) => img.image_type === 'original');
+      // Get all images (original and enhanced)
+      const allImages = data.images || [];
       
-      // Match enhanced with originals (simplified - in real app, you'd match by metadata or pairing)
-      const pairs = enhancedImages.map((enhanced: Image) => {
-        // Find corresponding original (this is simplified - you'd need proper pairing logic)
-        const original = originalImages.find((orig: Image) => 
-          orig.created_at <= enhanced.created_at
+      // Group by root image (original or first enhanced if no original)
+      // Images with parent_image_id are versions, others are originals
+      const rootImages = allImages.filter((img: Image) => !img.parent_image_id);
+      
+      // For each root, get all its versions
+      const imageGroups = rootImages.map((root: Image) => {
+        const versions = allImages.filter(
+          (img: Image) => img.parent_image_id === root.id || img.id === root.id
         );
         return {
-          enhanced,
-          original: original || null,
+          root,
+          versions: versions.sort((a: Image, b: Image) => {
+            // Original first, then by created_at
+            if (a.image_type === 'original') return -1;
+            if (b.image_type === 'original') return 1;
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          }),
         };
       });
       
-      setImages(pairs as any);
+      setImages(imageGroups as any);
+      
+      // Select first image group's first enhanced version (or original if no enhanced)
+      if (imageGroups.length > 0) {
+        const firstGroup = imageGroups[0];
+        const firstImage = firstGroup.versions.find((v: Image) => v.image_type === 'enhanced') || firstGroup.root;
+        setSelectedImageId(firstImage.id);
+      }
     } catch (error) {
       console.error('Error fetching images:', error);
     } finally {
@@ -81,75 +99,87 @@ export default function ProjectImagesPage() {
 
         {images.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No se encontraron imágenes mejoradas para este proyecto</p>
+            <p className="text-gray-500">No se encontraron imágenes para este proyecto</p>
           </div>
         ) : (
           <div className="space-y-8">
-            {images.map((pair: any, index: number) => (
-              <div key={pair.enhanced.id} className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="mb-4 text-sm text-gray-500">
-                  Imagen {index + 1} • {new Date(pair.enhanced.created_at).toLocaleDateString('es-MX')}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Original */}
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-gray-700">Original</h3>
-                      {pair.original?.original_url && (
-                        <a
-                          href={pair.original.original_url}
-                          download
-                          className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                        >
-                          <Download className="w-3 h-3" />
-                          Descargar
-                        </a>
+            {/* Image Groups List */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+              {images.map((group: any, index: number) => {
+                const rootImage = group.root;
+                const hasVersions = group.versions.length > 1;
+                const previewImage = group.versions.find((v: Image) => v.enhanced_url) || rootImage;
+                const imageUrl = previewImage.enhanced_url || previewImage.original_url;
+                
+                return (
+                  <button
+                    key={rootImage.id}
+                    onClick={() => {
+                      // Select the first enhanced version, or original if none
+                      const firstEnhanced = group.versions.find((v: Image) => v.image_type === 'enhanced');
+                      setSelectedImageId(firstEnhanced?.id || rootImage.id);
+                    }}
+                    className={`text-left bg-white rounded-lg border transition-all ${
+                      selectedImageId && group.versions.some((v: Image) => v.id === selectedImageId)
+                        ? 'border-gray-900 ring-1 ring-gray-900'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="aspect-video bg-gray-50 rounded-t-lg overflow-hidden">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={`Imagen ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                          Sin imagen
+                        </div>
                       )}
                     </div>
-                    {pair.original?.original_url ? (
-                      <img
-                        src={pair.original.original_url}
-                        alt="Original"
-                        className="w-full rounded-lg border border-gray-200"
-                      />
-                    ) : (
-                      <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center text-sm text-gray-400">
-                        Original no disponible
+                    <div className="p-3">
+                      <div className="text-xs font-medium text-gray-900 mb-1">
+                        Imagen {index + 1}
                       </div>
-                    )}
-                  </div>
+                      <div className="text-xs text-gray-500">
+                        {hasVersions ? `${group.versions.length} versión${group.versions.length > 1 ? 'es' : ''}` : '1 versión'}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
 
-                  {/* Enhanced */}
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-gray-700">Mejorada</h3>
-                      {pair.enhanced.enhanced_url && (
-                        <a
-                          href={pair.enhanced.enhanced_url}
-                          download
-                          className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                        >
-                          <Download className="w-3 h-3" />
-                          Descargar
-                        </a>
-                      )}
-                    </div>
-                    {pair.enhanced.enhanced_url ? (
-                      <img
-                        src={pair.enhanced.enhanced_url}
-                        alt="Mejorada"
-                        className="w-full rounded-lg border border-gray-200"
-                      />
-                    ) : (
-                      <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center text-sm text-gray-400">
-                        Mejorada no disponible
-                      </div>
-                    )}
-                  </div>
+            {/* Version Navigator */}
+            {selectedImageId && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={() => setAssigningImageId(selectedImageId)}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                    Asignar a Espacios
+                  </button>
                 </div>
+                <ImageVersionNavigator imageId={selectedImageId} />
               </div>
-            ))}
+            )}
           </div>
+        )}
+
+        {/* Space Assignment Modal */}
+        {assigningImageId && (
+          <ImageSpaceAssignment
+            imageId={assigningImageId}
+            projectId={projectId}
+            onClose={() => setAssigningImageId(null)}
+            onAssigned={() => {
+              // Refresh if needed
+              setAssigningImageId(null);
+            }}
+          />
         )}
       </div>
     </div>

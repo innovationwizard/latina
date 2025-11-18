@@ -1,6 +1,6 @@
 "use client";
 
-import Enhancer from "../../Enhancer";
+import EnhancedEnhancer from "../../components/EnhancedEnhancer";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -17,11 +17,13 @@ export default function EnhancerToolPage() {
             Volver al Panel
           </Link>
           <h1 className="text-3xl font-light text-gray-900 mb-2">Asistente de Render</h1>
-          <p className="text-sm text-gray-500">Mejora imágenes de propuesta con IA</p>
+          <p className="text-sm text-gray-500">
+            Mejora imágenes de propuesta con IA. Cambia materiales y colores con precisión.
+          </p>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-8">
-          <Enhancer />
+          <EnhancedEnhancer />
         </div>
       </div>
     </div>

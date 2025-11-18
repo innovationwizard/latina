@@ -19,13 +19,42 @@ export default function NewProjectPage() {
     room_type: '',
     notes: '',
   });
+  const [numSpaces, setNumSpaces] = useState<number>(0);
+  const [spaces, setSpaces] = useState<Array<{ name: string; description: string }>>([]);
+
+  const handleNumSpacesChange = (value: number) => {
+    const num = Math.max(0, Math.min(20, value)); // Limit to 0-20 spaces
+    setNumSpaces(num);
+    // Initialize spaces array
+    const newSpaces = Array(num).fill(null).map((_, i) => 
+      spaces[i] || { name: '', description: '' }
+    );
+    setSpaces(newSpaces.slice(0, num));
+  };
+
+  const handleSpaceChange = (index: number, field: 'name' | 'description', value: string) => {
+    const newSpaces = [...spaces];
+    newSpaces[index] = { ...newSpaces[index], [field]: value };
+    setSpaces(newSpaces);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    // Validate spaces if project type is space_design
+    if (formData.project_type === 'space_design' && numSpaces > 0) {
+      const invalidSpaces = spaces.filter((s, i) => i < numSpaces && !s.name.trim());
+      if (invalidSpaces.length > 0) {
+        setError('Por favor, proporciona un nombre para todos los espacios');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
+      // Create project
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -38,7 +67,28 @@ export default function NewProjectPage() {
         throw new Error(data.error || 'Failed to create project');
       }
 
-      router.push(`/projects/${data.project.id}`);
+      const projectId = data.project.id;
+
+      // Create spaces if specified
+      if (formData.project_type === 'space_design' && numSpaces > 0) {
+        for (let i = 0; i < numSpaces; i++) {
+          const space = spaces[i];
+          if (space && space.name.trim()) {
+            await fetch('/api/spaces', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                project_id: projectId,
+                name: space.name.trim(),
+                description: space.description || null,
+                display_order: i,
+              }),
+            });
+          }
+        }
+      }
+
+      router.push(`/projects/${projectId}`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -183,6 +233,66 @@ export default function NewProjectPage() {
               </div>
             </div>
           </div>
+
+          {/* Spaces Configuration (only for space_design) */}
+          {formData.project_type === 'space_design' && (
+            <div>
+              <h2 className="text-lg font-light text-gray-900 mb-4">Espacios del Proyecto</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Número de Espacios
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="20"
+                    value={numSpaces}
+                    onChange={(e) => handleNumSpacesChange(parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Especifica cuántos espacios (habitaciones/áreas) tiene este proyecto
+                  </p>
+                </div>
+
+                {numSpaces > 0 && (
+                  <div className="space-y-3">
+                    {Array.from({ length: numSpaces }).map((_, index) => (
+                      <div key={index} className="p-4 border border-gray-200 rounded-md space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Espacio {index + 1} - Nombre *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={spaces[index]?.name || ''}
+                            onChange={(e) => handleSpaceChange(index, 'name', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                            placeholder="ej., Sala Principal, Comedor, Dormitorio"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Descripción (Opcional)
+                          </label>
+                          <textarea
+                            value={spaces[index]?.description || ''}
+                            onChange={(e) => handleSpaceChange(index, 'description', e.target.value)}
+                            rows={2}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-400"
+                            placeholder="Descripción del espacio..."
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">

@@ -3,20 +3,26 @@ import sharp from 'sharp';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { S3_BUCKETS, S3_REGION, getS3Url } from '@/lib/s3-utils';
 import { saveImageToDatabase, findOrCreateOriginalImage } from '@/lib/db/image-storage';
+import Replicate from 'replicate';
 
 // ============================================================================
 // LEONARDO AI API CONFIGURATION
 // ============================================================================
 
 const LEONARDO_API_KEY = process.env.LEONARDO_API_KEY;
+const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 const BASE_URL = 'https://cloud.leonardo.ai/api/rest/v1';
+
+// Initialize Replicate client
+const replicate = REPLICATE_API_TOKEN ? new Replicate({ auth: REPLICATE_API_TOKEN }) : null;
 
 const CONTROLNET_CANNY_ID = '20660B5C-3A83-406A-B233-6AAD728A3267';
 const LEGACY_STRUCTURE_MODEL_ID = 'ac614f96-1082-45bf-be9d-757f2d31c174';
+// Optimized prompts for maximum preservation and photorealism
 const PROMPT =
-  'ultra-realistic, photorealistic interior design render, 8k, sharp focus, realistic textures on all surfaces, rich wood grain, soft fabric, polished marble, realistic global illumination and soft shadows';
+  'ultra-realistic, photorealistic interior design render, 8k, sharp focus, realistic textures on all surfaces, rich wood grain, soft fabric, polished marble, realistic global illumination and soft shadows, preserve exact layout, preserve exact elements, preserve exact materials, preserve exact colors, professional photography quality';
 const NEGATIVE_PROMPT =
-  'drawn, sketch, illustration, cartoon, blurry, distorted, warped, ugly, noisy, grainy, unreal';
+  'drawn, sketch, illustration, cartoon, blurry, distorted, warped, ugly, noisy, grainy, unreal, material changes, color changes, element modifications, flat, montage, photoshop composition';
 const hasExplicitCreds =
   Boolean(process.env.AWS_ACCESS_KEY_ID) && Boolean(process.env.AWS_SECRET_ACCESS_KEY);
 
@@ -48,7 +54,7 @@ function buildGenerationPayload(imageId, width, height, mode) {
     init_image_id: imageId,
     width: width, // Use the actual dimensions (already calculated to fit within 1024)
     height: height, // Use the actual dimensions (already calculated to fit within 1024)
-    init_strength: isStructure ? 0.4 : 0.7,
+    init_strength: isStructure ? 0.25 : 0.3, // Optimized: Lower strength for better preservation
     alchemy: !isStructure,
   };
 
@@ -57,7 +63,7 @@ function buildGenerationPayload(imageId, width, height, mode) {
     payload.controlNet = {
       controlnetModelId: CONTROLNET_CANNY_ID,
       initImageId: imageId,
-      weight: 0.75,
+      weight: 0.92, // Optimized: Higher weight for maximum structure preservation
       preprocessor: false,
     };
   } else {
@@ -81,24 +87,40 @@ async function uploadToLeonardo(imageBuffer, extension) {
     
     console.log(`Original dimensions: ${originalWidth}x${originalHeight}`);
     
-    // 2. Calculate target dimensions that fit within 1024x1024 while preserving aspect ratio
-    const maxDimension = 1024;
+    // 2. Calculate target dimensions: use original OR upscale if too small
+    // Leonardo supports up to 2048x2048, but we'll use original dimensions or upscale to match/improve
     const aspectRatio = originalWidth / originalHeight;
+    const minDimension = 1024; // Minimum to ensure good quality
+    const maxDimension = 2048; // Leonardo's practical maximum
     
     let targetWidth, targetHeight;
     
-    if (originalWidth <= maxDimension && originalHeight <= maxDimension) {
-      // Image is already small enough, use original dimensions
+    // If original is smaller than minimum, upscale to at least minimum while preserving aspect ratio
+    if (originalWidth < minDimension && originalHeight < minDimension) {
+      // Upscale to meet minimum on the larger side
+      if (originalWidth >= originalHeight) {
+        targetWidth = minDimension;
+        targetHeight = Math.round(minDimension / aspectRatio);
+      } else {
+        targetHeight = minDimension;
+        targetWidth = Math.round(minDimension * aspectRatio);
+      }
+      console.log(`Upscaling from ${originalWidth}x${originalHeight} to ${targetWidth}x${targetHeight} for better quality`);
+    } else if (originalWidth > maxDimension || originalHeight > maxDimension) {
+      // If larger than max, scale down to max while preserving aspect ratio
+      if (originalWidth > originalHeight) {
+        targetWidth = maxDimension;
+        targetHeight = Math.round(maxDimension / aspectRatio);
+      } else {
+        targetHeight = maxDimension;
+        targetWidth = Math.round(maxDimension * aspectRatio);
+      }
+      console.log(`Scaling down from ${originalWidth}x${originalHeight} to ${targetWidth}x${targetHeight} (max ${maxDimension})`);
+    } else {
+      // Use original dimensions (they're in the sweet spot)
       targetWidth = originalWidth;
       targetHeight = originalHeight;
-    } else if (originalWidth > originalHeight) {
-      // Landscape: width is the limiting factor
-      targetWidth = maxDimension;
-      targetHeight = Math.round(maxDimension / aspectRatio);
-    } else {
-      // Portrait or square: height is the limiting factor
-      targetHeight = maxDimension;
-      targetWidth = Math.round(maxDimension * aspectRatio);
+      console.log(`Using original dimensions: ${targetWidth}x${targetHeight}`);
     }
     
     // Ensure dimensions are multiples of 8 (Leonardo requirement)
@@ -115,17 +137,17 @@ async function uploadToLeonardo(imageBuffer, extension) {
     
     console.log(`Target dimensions (preserving aspect ratio): ${targetWidth}x${targetHeight}`);
     
-    // 3. Resize and process the image
+    // 3. Resize and process the image (upscale if needed, maintain quality)
     console.log('Preprocessing image...');
     const processedBuffer = await image
       .resize(targetWidth, targetHeight, { 
-        fit: 'inside', 
-        withoutEnlargement: true 
+        fit: 'fill', // Use 'fill' to ensure exact dimensions (upscale if needed)
+        kernel: 'lanczos3' // High-quality upscaling algorithm
       })
-      .jpeg({ quality: 85 })
+      .jpeg({ quality: 95, mozjpeg: true }) // Higher quality for better definition
       .toBuffer();
     
-    // Verify actual output dimensions (may differ slightly due to fit: 'inside')
+    // Verify actual output dimensions
     const processedMetadata = await sharp(processedBuffer).metadata();
     const actualWidth = processedMetadata.width;
     const actualHeight = processedMetadata.height;
@@ -357,6 +379,122 @@ async function pollForCompletion(generationId) {
 }
 
 // ============================================================================
+// STABLE DIFFUSION + CONTROLNET (via Replicate)
+// ============================================================================
+
+async function enhanceWithStableDiffusion(imageBuffer, originalWidth, originalHeight) {
+  if (!replicate) {
+    throw new Error('Replicate API token not configured');
+  }
+
+  try {
+    // Get original dimensions from the buffer
+    const image = sharp(imageBuffer);
+    const metadata = await image.metadata();
+    const imgWidth = metadata.width || originalWidth;
+    const imgHeight = metadata.height || originalHeight;
+    
+    // Calculate target dimensions: use original OR upscale if too small
+    // SDXL works best at 1024x1024 or higher, but we'll use original or upscale to match/improve
+    const aspectRatio = imgWidth / imgHeight;
+    const minDimension = 1024; // SDXL's native resolution
+    const maxDimension = 2048; // Practical maximum for SDXL
+    
+    let targetWidth, targetHeight;
+    
+    // If original is smaller than minimum, upscale to at least minimum while preserving aspect ratio
+    if (imgWidth < minDimension && imgHeight < minDimension) {
+      // Upscale to meet minimum on the larger side
+      if (imgWidth >= imgHeight) {
+        targetWidth = minDimension;
+        targetHeight = Math.round(minDimension / aspectRatio);
+      } else {
+        targetHeight = minDimension;
+        targetWidth = Math.round(minDimension * aspectRatio);
+      }
+      console.log(`[SD] Upscaling from ${imgWidth}x${imgHeight} to ${targetWidth}x${targetHeight} for better quality`);
+    } else if (imgWidth > maxDimension || imgHeight > maxDimension) {
+      // If larger than max, scale down to max while preserving aspect ratio
+      if (imgWidth > imgHeight) {
+        targetWidth = maxDimension;
+        targetHeight = Math.round(maxDimension / aspectRatio);
+      } else {
+        targetHeight = maxDimension;
+        targetWidth = Math.round(maxDimension * aspectRatio);
+      }
+      console.log(`[SD] Scaling down from ${imgWidth}x${imgHeight} to ${targetWidth}x${targetHeight} (max ${maxDimension})`);
+    } else {
+      // Use original dimensions
+      targetWidth = imgWidth;
+      targetHeight = imgHeight;
+      console.log(`[SD] Using original dimensions: ${targetWidth}x${targetHeight}`);
+    }
+    
+    // Ensure dimensions are multiples of 8 (SDXL requirement)
+    targetWidth = Math.floor(targetWidth / 8) * 8;
+    targetHeight = Math.floor(targetHeight / 8) * 8;
+    
+    // Ensure minimum dimensions
+    if (targetWidth < 512) targetWidth = 512;
+    if (targetHeight < 512) targetHeight = 512;
+    targetWidth = Math.floor(targetWidth / 8) * 8;
+    targetHeight = Math.floor(targetHeight / 8) * 8;
+    
+    console.log(`[SD] Final dimensions: ${targetWidth}x${targetHeight}`);
+    
+    // Process image to target dimensions if needed (upscale with high quality)
+    let processedBuffer = imageBuffer;
+    if (targetWidth !== imgWidth || targetHeight !== imgHeight) {
+      const processedImage = sharp(imageBuffer);
+      processedBuffer = await processedImage
+        .resize(targetWidth, targetHeight, {
+          fit: 'fill',
+          kernel: 'lanczos3' // High-quality upscaling
+        })
+        .jpeg({ quality: 95, mozjpeg: true })
+        .toBuffer();
+    }
+    
+    // Convert buffer to base64 for Replicate
+    const base64Image = processedBuffer.toString('base64');
+    const dataUri = `data:image/jpeg;base64,${base64Image}`;
+
+    // Use Stable Diffusion XL with ControlNet for maximum structure preservation
+    // Model: stability-ai/sdxl with controlnet-canny
+    const output = await replicate.run(
+      "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+      {
+        input: {
+          image: dataUri,
+          prompt: "ultra-realistic, photorealistic interior design render, 8k, sharp focus, realistic textures, professional photography quality, preserve exact layout, preserve exact elements, preserve exact materials, preserve exact colors",
+          negative_prompt: "drawn, sketch, illustration, cartoon, blurry, distorted, warped, ugly, noisy, grainy, unreal, material changes, color changes, element modifications, flat, montage, photoshop composition",
+          num_outputs: 1,
+          num_inference_steps: 50, // Increased for better quality
+          guidance_scale: 7.5,
+          strength: 0.2, // Very low strength for maximum preservation
+          width: targetWidth,
+          height: targetHeight,
+          // ControlNet settings (if supported by model)
+          controlnet_conditioning_scale: 0.95, // Strong structure preservation
+        }
+      }
+    );
+
+    // Replicate returns an array of URLs
+    if (Array.isArray(output) && output.length > 0) {
+      return output[0];
+    } else if (typeof output === 'string') {
+      return output;
+    } else {
+      throw new Error('Unexpected output format from Replicate');
+    }
+  } catch (error) {
+    console.error('Stable Diffusion enhancement error:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
 // API ROUTE
 // ============================================================================
 
@@ -387,6 +525,8 @@ export async function POST(request) {
     const originalWidth = imageMetadata.width;
     const originalHeight = imageMetadata.height;
 
+    console.log(`Original image dimensions: ${originalWidth}x${originalHeight}`);
+
     // Save original to S3
     let originalS3Info = null;
     try {
@@ -398,89 +538,217 @@ export async function POST(request) {
       console.error('Failed to archive original upload:', archiveError);
     }
 
-    console.log('Uploading to Leonardo...');
-    const uploadResult = await uploadToLeonardo(buffer, 'jpg');
-    const { imageId, width, height } = uploadResult;
+    // Get final projectId (may be auto-created) - do this before processing
+    const originalImageData = await findOrCreateOriginalImage(
+      projectId,
+      originalS3Info,
+      file.name,
+      file.type,
+      originalWidth,
+      originalHeight
+    );
+    const finalProjectId = originalImageData.projectId;
 
-    console.log(`Using dimensions: ${width}x${height} (preserving original aspect ratio)`);
-    console.log('Starting generation...');
-    const generationId = await generateEnhancedImage(imageId, width, height, mode);
+    // Process both enhancements in parallel
+    console.log('Starting dual enhancement (Leonardo optimized + Stable Diffusion)...');
+    console.log('Ensuring output resolution >= original resolution for both options...');
+    
+    const enhancementPromises = [
+      // Option A: Leonardo (optimized)
+      (async () => {
+        try {
+          console.log('Processing Opción A (Leonardo optimized)...');
+          console.log(`Target: resolution >= ${originalWidth}x${originalHeight}`);
+          const uploadResult = await uploadToLeonardo(buffer, 'jpg');
+          const { imageId, width, height } = uploadResult;
+          console.log(`Leonardo will generate at ${width}x${height} (original: ${originalWidth}x${originalHeight})`);
+          const generationId = await generateEnhancedImage(imageId, width, height, mode);
+          const enhancedUrl = await pollForCompletion(generationId);
+          return { type: 'leonardo', url: enhancedUrl, generationId, imageId, width, height };
+        } catch (error) {
+          console.error('Leonardo enhancement failed:', error);
+          return { type: 'leonardo', error: error.message };
+        }
+      })(),
+      // Option B: Stable Diffusion + ControlNet
+      (async () => {
+        try {
+          console.log('Processing Opción B (Stable Diffusion + ControlNet)...');
+          console.log(`Target: resolution >= ${originalWidth}x${originalHeight}`);
+          const enhancedUrl = await enhanceWithStableDiffusion(buffer, originalWidth, originalHeight);
+          return { type: 'stablediffusion', url: enhancedUrl };
+        } catch (error) {
+          console.error('Stable Diffusion enhancement failed:', error);
+          return { type: 'stablediffusion', error: error.message };
+        }
+      })(),
+    ];
 
-    console.log('Polling...');
-    const enhancedUrl = await pollForCompletion(generationId);
+    const results = await Promise.allSettled(enhancementPromises);
+    
+    // Process results
+    let optionA = null;
+    let optionB = null;
+    let optionAError = null;
+    let optionBError = null;
 
-    // Save enhanced image to S3 (always, even without projectId - will auto-create project)
-    let enhancedS3Info = null;
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        const data = result.value;
+        if (data.type === 'leonardo' && !data.error) {
+          optionA = data;
+        } else if (data.type === 'stablediffusion' && !data.error) {
+          optionB = data;
+        } else if (data.error) {
+          if (data.type === 'leonardo') optionAError = data.error;
+          if (data.type === 'stablediffusion') optionBError = data.error;
+        }
+      } else {
+        if (index === 0) optionAError = result.reason?.message || 'Unknown error';
+        if (index === 1) optionBError = result.reason?.message || 'Unknown error';
+      }
+    });
+
+    // Save both enhanced images to S3 and database
+    const savedImages = [];
+
     try {
-      // Get final projectId (may be auto-created)
-      const originalImageData = await findOrCreateOriginalImage(
-        projectId,
-        originalS3Info,
-        file.name,
-        file.type,
-        originalWidth,
-        originalHeight
-      );
-      const finalProjectId = originalImageData.projectId;
-
-      // Save enhanced to S3
-      enhancedS3Info = await saveEnhancedImageToS3(enhancedUrl, finalProjectId, file.name);
-      if (enhancedS3Info) {
-        console.log('Saved enhanced image to S3:', enhancedS3Info.location);
+      // Save Option A (Leonardo)
+      if (optionA && optionA.url) {
+        const enhancedS3InfoA = await saveEnhancedImageToS3(optionA.url, finalProjectId, `option-a-${file.name}`);
+        const enhancedImageRecordA = await saveImageToDatabase({
+          projectId: finalProjectId,
+          siteVisitId: siteVisitId || null,
+          workflowStep: 'design',
+          imageType: 'enhanced',
+          enhancedUrl: enhancedS3InfoA?.location || optionA.url,
+          leonardoImageId: optionA.imageId,
+          s3Key: enhancedS3InfoA?.key || null,
+          s3Bucket: enhancedS3InfoA?.bucket || null,
+          filename: `option-a-${file.name}`,
+          mimeType: file.type,
+          width,
+          height,
+          metadata: {
+            enhancement_type: 'general',
+            mode,
+            option: 'A',
+            provider: 'leonardo',
+            parameters: {
+              init_strength: mode === 'structure' ? 0.25 : 0.3,
+              guidance_scale: 7,
+              controlnet_weight: mode === 'structure' ? 0.92 : null,
+              width,
+              height,
+            },
+            leonardoImageId: optionA.imageId,
+            generationId: optionA.generationId,
+          },
+          parentImageId: originalImageData.imageId,
+        });
+        savedImages.push({
+          option: 'A',
+          url: enhancedS3InfoA?.location || optionA.url,
+          imageId: enhancedImageRecordA.id,
+          version: enhancedImageRecordA.version,
+        });
+        console.log('✅ Opción A saved to database:', enhancedImageRecordA.id);
       }
 
-      // Save enhanced image to database with all metadata
-      const enhancedImageRecord = await saveImageToDatabase({
+      // Save Option B (Stable Diffusion)
+      if (optionB && optionB.url) {
+        // Download the image from Replicate URL to save to S3
+        const sdResponse = await fetch(optionB.url);
+        if (!sdResponse.ok) {
+          throw new Error('Failed to download Stable Diffusion image');
+        }
+        const sdBuffer = Buffer.from(await sdResponse.arrayBuffer());
+        
+        // Save to S3 directly (not using saveEnhancedImageToS3 which expects Leonardo URL)
+        const bucketName = S3_BUCKETS.LEONARDO;
+        const finalBucket = (bucketName && bucketName !== 'LEONARDO_S3_BUCKET' && !bucketName.includes('LEONARDO_S3')) 
+          ? bucketName 
+          : 'latina-leonardo-images';
+        
+        const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9._-]/g, '-') : 'enhanced.jpg';
+        const prefix = finalProjectId ? `enhanced/${finalProjectId}` : 'enhanced';
+        const key = `${prefix}/${Date.now()}-option-b-${safeName}`;
+
+        await s3Client.send(
+          new PutObjectCommand({
+            Bucket: finalBucket,
+            Key: key,
+            Body: sdBuffer,
+            ContentType: 'image/jpeg',
+          })
+        );
+
+        const enhancedS3InfoB = {
+          bucket: finalBucket,
+          key,
+          location: getS3Url(finalBucket, key),
+        };
+        const enhancedImageRecordB = await saveImageToDatabase({
+          projectId: finalProjectId,
+          siteVisitId: siteVisitId || null,
+          workflowStep: 'design',
+          imageType: 'enhanced',
+          enhancedUrl: enhancedS3InfoB?.location || optionB.url,
+          s3Key: enhancedS3InfoB?.key || null,
+          s3Bucket: enhancedS3InfoB?.bucket || null,
+          filename: `option-b-${file.name}`,
+          mimeType: file.type,
+          width,
+          height,
+          metadata: {
+            enhancement_type: 'general',
+            option: 'B',
+            provider: 'stablediffusion',
+            parameters: {
+              strength: 0.2,
+              guidance_scale: 7.5,
+              controlnet_conditioning_scale: 0.95,
+              width,
+              height,
+            },
+          },
+          parentImageId: originalImageData.imageId,
+        });
+        savedImages.push({
+          option: 'B',
+          url: enhancedS3InfoB?.location || optionB.url,
+          imageId: enhancedImageRecordB.id,
+          version: enhancedImageRecordB.version,
+        });
+        console.log('✅ Opción B saved to database:', enhancedImageRecordB.id);
+      }
+
+      return NextResponse.json({
+        options: savedImages,
+        originalS3Url: originalS3Info?.location || null,
         projectId: finalProjectId,
         siteVisitId: siteVisitId || null,
-        workflowStep: 'design', // Default to design step
-        imageType: 'enhanced',
-        enhancedUrl: enhancedS3Info?.location || enhancedUrl,
-        leonardoImageId: imageId,
-        s3Key: enhancedS3Info?.key || null,
-        s3Bucket: enhancedS3Info?.bucket || null,
-        filename: file.name,
-        mimeType: file.type,
-        width,
-        height,
-        metadata: {
-          enhancement_type: 'general',
-          mode,
-          parameters: {
-            init_strength: mode === 'structure' ? 0.4 : 0.7,
-            guidance_scale: 7,
-            width,
-            height,
-          },
-          leonardoImageId: imageId,
-          generationId,
+        errors: {
+          optionA: optionAError,
+          optionB: optionBError,
         },
-        parentImageId: originalImageData.imageId, // Link to original
-      });
-
-      console.log('✅ Enhanced image saved to database:', enhancedImageRecord.id);
-
-      return NextResponse.json({
-        enhancedUrl,
-        originalS3Url: originalS3Info?.location || null,
-        enhancedS3Url: enhancedS3Info?.location || null,
-        leonardoImageId: imageId,
-        projectId: finalProjectId, // Return final projectId (may be auto-created)
-        siteVisitId: siteVisitId || null,
-        imageId: enhancedImageRecord.id,
-        version: enhancedImageRecord.version,
       });
     } catch (dbError) {
-      console.error('Error saving to database (continuing with S3 only):', dbError);
-      // Still return success even if DB save fails
+      console.error('Error saving to database:', dbError);
+      // Still return results even if DB save fails
       return NextResponse.json({
-        enhancedUrl,
+        options: [
+          optionA ? { option: 'A', url: optionA.url } : null,
+          optionB ? { option: 'B', url: optionB.url } : null,
+        ].filter(Boolean),
         originalS3Url: originalS3Info?.location || null,
-        enhancedS3Url: enhancedS3Info?.location || null,
-        leonardoImageId: imageId,
-        projectId: projectId || null,
+        projectId: finalProjectId || projectId || null,
         siteVisitId: siteVisitId || null,
-        warning: 'Image saved to S3 but database save failed',
+        errors: {
+          optionA: optionAError,
+          optionB: optionBError,
+          database: 'Database save failed, but images are available',
+        },
       });
     }
   } catch (error) {

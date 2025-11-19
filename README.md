@@ -1,4 +1,15 @@
-Latina Interiors - Summary of Genesis Meeting 
+Latina Interiors - Summary of Genesis Meeting
+
+---
+
+## ⚠️ CRITICAL: READ CLIENT FEEDBACK
+
+**Before making any changes to image enhancement features, READ:**
+- [`docs/CRITICAL_CLIENT_FEEDBACK.md`](./docs/CRITICAL_CLIENT_FEEDBACK.md)
+
+This document contains essential client requirements for image enhancement.
+
+--- 
 
 1. Participants and Context
 

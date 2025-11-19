@@ -53,6 +53,9 @@ S3_NOT_IMAGES_BUCKET=latina-not-images
 # Leonardo AI
 LEONARDO_API_KEY=your-leonardo-api-key
 
+# Replicate (for Stable Diffusion + ControlNet)
+REPLICATE_API_TOKEN=your-replicate-api-token
+
 # Authentication
 AUTH_SECRET=your-very-long-random-secret-key-minimum-32-characters
 ```

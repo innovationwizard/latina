@@ -6,6 +6,15 @@
 
 ---
 
+## ⚠️ CRITICAL: READ CLIENT FEEDBACK FIRST
+
+**Before making any changes to image enhancement features, READ:**
+- [`docs/CRITICAL_CLIENT_FEEDBACK.md`](./CRITICAL_CLIENT_FEEDBACK.md)
+
+This document contains essential client requirements that must be considered for all image enhancement work.
+
+---
+
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
@@ -33,30 +42,46 @@
 
 > **Client Meeting - 2025-01-XX**: The client has identified two critical value propositions that are the highest priority for this application. These priorities should guide all development decisions.
 
-### 1. ⚡ Image Manipulation & Enhancement (MAXIMUM PRIORITY)
+### 1. ⚡ Image Enhancement - Photorealism (MAXIMUM PRIORITY)
 
-**Requirements:**
-- **Accuracy**: As accurate as possible
-- **Speed**: As fast as possible (replacing hours-long Photoshop sessions)
-- **Ease of Use**: Simple, intuitive interface for common tasks
-  - "Change the color of the floor from A to B"
-  - "Change the material of the chair from A to B"
-  - Other material/color/texture swaps
+**⚠️ CRITICAL CLIENT FEEDBACK - READ [`CRITICAL_CLIENT_FEEDBACK.md`](./CRITICAL_CLIENT_FEEDBACK.md) FIRST**
+
+**Client Requirements:**
+- **Single-click enhancement** - No manual work required
+- **Preserve everything**: Space, element shapes/sizes, materials, colors (even smallest elements)
+- **Photorealism**: Transform flat/montage renders into professional photograph quality
+- **No manipulation tools**: Client does NOT want manual element/material/color/lighting changes
+
+**What Client DOES NOT Want:**
+- ❌ Manual element replacement/addition
+- ❌ Manual material replacement
+- ❌ Manual color changes
+- ❌ Manual lighting adjustments
+- ❌ Any tool requiring client to "put in work"
+
+**What Client DOES Want:**
+- ✅ Single-click enhancement
+- ✅ Preserves space layout exactly
+- ✅ Preserves all element shapes and sizes exactly (including smallest)
+- ✅ Preserves all materials and colors exactly (including smallest)
+- ✅ Makes image photorealistic (not flat, not montage, not Photoshop-composition-like)
+- ✅ Results indistinguishable from professional photographs
 
 **Current State:**
 - ✅ Leonardo AI integration for image enhancement
 - ✅ Two modes: Structure (ControlNet) and Surfaces (PhotoReal)
 - ✅ Aspect ratio preservation
-- ⚠️ **Gap**: No targeted material/color replacement interface
-- ⚠️ **Gap**: No pre-configured material/color libraries
-- ⚠️ **Gap**: Manual prompt editing required for specific changes
+- ⚠️ **Gap**: Need to ensure 100% preservation of space, elements, materials, colors
+- ⚠️ **Gap**: Need to optimize for photorealism without any changes to content
+- ⚠️ **Note**: Existing manipulation tools (targeted, color, lighting, elements) exist but are NOT what client wants
 
 **Target Improvements:**
-- Visual material/color picker interface
-- Pre-defined material and color libraries
-- One-click material/color replacement
-- Batch processing for multiple changes
-- Real-time preview before final generation
+- Optimize enhancement prompts for maximum photorealism
+- Ensure structure preservation (ControlNet weights)
+- Verify smallest elements remain unchanged
+- Improve texture detail and depth perception
+- Natural lighting and shadow rendering
+- Professional photography quality output
 
 ### 2. 📊 Automated, Accurate Quotations
 

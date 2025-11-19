@@ -13,6 +13,7 @@ export default function EnhancedEnhancer() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [enhancedImage, setEnhancedImage] = useState<string | null>(null);
+  const [enhancedOptions, setEnhancedOptions] = useState<Array<{ option: string; url: string; imageId?: string; version?: number }>>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -106,11 +107,37 @@ export default function EnhancedEnhancer() {
         throw new Error(data.error || 'La mejora falló');
       }
 
-      setEnhancedImage(data.enhancedUrl);
+      // Handle new format with multiple options
+      if (data.options && Array.isArray(data.options)) {
+        setEnhancedOptions(data.options);
+        // Set first option as default enhanced image for backward compatibility
+        if (data.options.length > 0) {
+          setEnhancedImage(data.options[0].url);
+        }
+        // Store original URL if provided
+        if (data.originalS3Url) {
+          // Original is already in preview, but we'll use it for comparison
+        }
+      } else if (data.enhancedUrl) {
+        // Fallback to old format
+        setEnhancedImage(data.enhancedUrl);
+        setEnhancedOptions([]);
+      }
+
       if (enhanceTimerRef.current) {
         const elapsedSeconds = ((Date.now() - enhanceTimerRef.current) / 1000).toFixed(2);
         console.log(`Mejora completada en ${elapsedSeconds} segundos.`);
         enhanceTimerRef.current = null;
+      }
+
+      // Log any errors
+      if (data.errors) {
+        if (data.errors.optionA) {
+          console.warn('Opción A error:', data.errors.optionA);
+        }
+        if (data.errors.optionB) {
+          console.warn('Opción B error:', data.errors.optionB);
+        }
       }
     } catch (err: any) {
       setError(err.message);
@@ -316,6 +343,7 @@ export default function EnhancedEnhancer() {
     setFile(null);
     setPreview(null);
     setEnhancedImage(null);
+    setEnhancedOptions([]);
     setError(null);
     setSelectedElementIds([]);
     setPlacementInstructions('');
@@ -412,7 +440,7 @@ export default function EnhancedEnhancer() {
       )}
 
       {/* Upload Section */}
-      {!enhancedImage && (
+      {!enhancedImage && enhancedOptions.length === 0 && (
         <div className="space-y-6">
           <div
             className={`
@@ -558,18 +586,127 @@ export default function EnhancedEnhancer() {
                   ? 'Aplicando cambios de iluminación...'
                   : mode === 'elements'
                   ? 'Agregando elementos a la imagen...'
-                  : 'Creando magia...'}
+                  : 'Procesando Opción A y Opción B...'}
               </p>
               <p className="text-sm text-gray-400">
-                Esto puede tomar varios segundos...
+                {mode === 'general' 
+                  ? 'Generando dos versiones mejoradas. Esto puede tomar varios segundos...'
+                  : 'Esto puede tomar varios segundos...'}
               </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Result Section */}
-      {enhancedImage && (
+      {/* Result Section - Multiple Options with Original */}
+      {enhancedOptions.length > 0 && preview && (
+        <div className="space-y-6">
+          <h2 className="text-lg font-light text-gray-900">
+            Comparación de Imágenes
+          </h2>
+          <p className="text-sm text-gray-500">
+            Compara la imagen original con ambas opciones mejoradas
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Original Image */}
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                <div className="mb-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    Original
+                  </span>
+                </div>
+                <img 
+                  src={preview} 
+                  alt="Original"
+                  className="w-full rounded-lg"
+                />
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    if (file) {
+                      const url = window.URL.createObjectURL(file);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `original-${file.name}`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      window.URL.revokeObjectURL(url);
+                    }
+                  } catch (err) {
+                    setError('Error al descargar la imagen original');
+                  }
+                }}
+                className="w-full py-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md transition-colors text-sm font-light flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Descargar Original
+              </button>
+            </div>
+
+            {/* Enhanced Options */}
+            {enhancedOptions.map((option) => (
+              <div key={option.option} className="space-y-4">
+                <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                  <div className="mb-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      Opción {option.option}
+                    </span>
+                  </div>
+                  <img 
+                    src={option.url} 
+                    alt={`Opción ${option.option}`}
+                    className="w-full rounded-lg"
+                  />
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(option.url);
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `opcion-${option.option.toLowerCase()}-${file?.name || 'image.jpg'}`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      window.URL.revokeObjectURL(url);
+                    } catch (err) {
+                      setError('Error al descargar la imagen');
+                    }
+                  }}
+                  className="w-full py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-light flex items-center justify-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Descargar Opción {option.option}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Show errors if any */}
+          {error && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+              <p className="font-medium mb-1">Advertencia:</p>
+              <p>{error}</p>
+            </div>
+          )}
+
+          <button
+            onClick={reset}
+            className="w-full py-3 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md transition-colors"
+          >
+            Mejorar Otra Imagen
+          </button>
+        </div>
+      )}
+
+      {/* Result Section - Single Image (Fallback for old format) */}
+      {enhancedImage && enhancedOptions.length === 0 && (
         <div className="space-y-6">
           <h2 className="text-lg font-light text-gray-900">
             Imagen Mejorada

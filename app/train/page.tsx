@@ -184,7 +184,7 @@ export default function TrainPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Entrenamiento 🤖 - Sistema de Aprendizaje Profundo
+            Entrenamiento 🤖 Sistema de Aprendizaje Profundo
           </h1>
           <p className="text-gray-600">
             Entrena al sistema para generar imágenes fotorrealistas

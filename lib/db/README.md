@@ -56,9 +56,16 @@ LEONARDO_API_KEY=your-leonardo-api-key
 # Replicate (for Stable Diffusion + ControlNet)
 REPLICATE_API_TOKEN=your-replicate-api-token
 
+# ML Training System (optional)
+OPENAI_API_KEY=sk-proj-your-openai-api-key
+ML_SERVICE_URL=http://your-ml-service-url:8000
+ENABLE_TRAINING_MODE=false
+
 # Authentication
 AUTH_SECRET=your-very-long-random-secret-key-minimum-32-characters
 ```
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+run_terminal_cmd
 
 ## Quick Setup Checklist
 
@@ -113,6 +120,11 @@ For future schema changes, create migration files in `lib/db/migrations/` and ap
    - `labor_costs`: Labor cost library
 6. **`006_seed_initial_costs.sql`** - Seeds initial costs (1.00) and prices (2.00) for all materials and elements
 
+7. **`007_add_enhancement_ratings_and_experiments.sql`** - Adds tables for tracking enhancement quality and experiments
+   - `enhancement_ratings`: User ratings for enhancement options (A, B, etc.)
+   - `prompt_versions`: Different prompt versions and their performance metrics
+   - `parameter_experiments`: Parameter combinations and their ratings for optimization
+
 ### Running Migrations
 
 ```bash
@@ -126,5 +138,6 @@ node scripts/run-migration.js lib/db/migrations/003_add_image_versions.sql
 node scripts/run-migration.js lib/db/migrations/004_add_elements_table.sql
 node scripts/run-migration.js lib/db/migrations/005_add_spaces_and_quotation_engine.sql
 node scripts/run-migration.js lib/db/migrations/006_seed_initial_costs.sql
+node scripts/run-migration.js lib/db/migrations/007_add_enhancement_ratings_and_experiments.sql
 ```
 

@@ -8,7 +8,7 @@
 import { query } from './index';
 
 export interface ImageMetadata {
-  enhancement_type?: 'general' | 'targeted' | 'color' | 'lighting' | 'elements';
+  enhancement_type?: 'general' | 'targeted' | 'color' | 'lighting' | 'elements' | 'training';
   mode?: string;
   replacements?: Array<{
     targetElement: string;
@@ -41,6 +41,10 @@ export interface ImageMetadata {
   };
   leonardoImageId?: string;
   generationId?: string;
+  // Training-specific fields
+  option?: string; // 'A', 'B', etc.
+  provider?: string; // 'leonardo', 'stablediffusion'
+  prompt_version?: string;
 }
 
 export interface SaveImageParams {

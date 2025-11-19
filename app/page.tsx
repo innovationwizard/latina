@@ -1,5 +1,6 @@
 import Link from "next/link";
 import UserMenu from "./components/UserMenu";
+import TrainingCard from "./components/TrainingCard";
 
 const sections = [
   {
@@ -71,13 +72,35 @@ export default function Home() {
               <p className="text-sm md:text-base text-neutral-500 max-w-xl leading-relaxed">
                 Toda la información de cada proyecto en un solo lugar.
               </p>
-              <div className="flex flex-wrap gap-3 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <TrainingCard />
                 <Link
                   href="/projects"
-                  className="inline-flex items-center justify-center rounded-full border border-neutral-900 bg-neutral-900 px-4 py-2 text-neutral-50 hover:bg-neutral-50 hover:text-neutral-900 transition-colors"
+                  className="group border border-neutral-300 rounded-xl p-6 hover:border-neutral-900 transition-all duration-200"
                 >
-                  Proyectos
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-neutral-100 group-hover:bg-neutral-900 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-neutral-600 group-hover:text-neutral-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-neutral-900">
+                          Proyectos
+                        </h3>
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                          Gestión de proyectos
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-neutral-600 leading-relaxed">
+                      Ver y gestionar todos tus proyectos de diseño.
+                    </p>
+                  </div>
                 </Link>
+              </div>
+              <div className="flex flex-wrap gap-3 text-xs">
                 <Link
                   href="/quotes"
                   className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
@@ -215,6 +238,12 @@ export default function Home() {
                 className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
               >
                 Mejorador de imágenes de propuesta
+              </Link>
+              <Link
+                href="/train"
+                className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
+              >
+                Entrenamiento ML
               </Link>
             </div>
           </div>

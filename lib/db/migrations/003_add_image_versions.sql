@@ -7,7 +7,7 @@ ADD COLUMN IF NOT EXISTS parent_image_id UUID REFERENCES images(id) ON DELETE SE
 
 -- Add enhancement metadata columns
 ALTER TABLE images 
-ADD COLUMN IF NOT EXISTS enhancement_type VARCHAR(50) CHECK (enhancement_type IN ('general', 'targeted', 'color', 'lighting', 'elements', NULL)),
+ADD COLUMN IF NOT EXISTS enhancement_type VARCHAR(50) CHECK (enhancement_type IN ('general', 'targeted', 'color', 'lighting', 'elements', 'training', NULL)),
 ADD COLUMN IF NOT EXISTS enhancement_metadata JSONB;
 
 -- Create index for faster queries

@@ -262,7 +262,7 @@ export default function TrainPage() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700">Fase 2: Modelo de Recompensa Profundo</span>
+                    <span className="text-sm font-medium text-gray-700">Fase 2: Modelo de Recompensas Dinámicas</span>
                     <span className={`text-xs px-2 py-1 rounded ${
                       status.phase_2.active 
                         ? colors.bgLight + ' ' + colors.text

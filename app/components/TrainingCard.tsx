@@ -100,7 +100,7 @@ export default function TrainingCard() {
             </div>
             <div>
               <h3 className="text-sm font-medium text-neutral-50 group-hover:text-neutral-900">
-                Entrenamiento ML
+                Entrenamiento
               </h3>
               <p className="text-xs text-neutral-400 group-hover:text-neutral-500 mt-0.5">
                 Sistema de aprendizaje
@@ -108,7 +108,7 @@ export default function TrainingCard() {
             </div>
           </div>
           <p className="text-xs text-neutral-300 group-hover:text-neutral-600 leading-relaxed">
-            Mejora continua de parámetros y prompts mediante aprendizaje automático.
+            Mejora continua de parámetros mediante aprendizaje automático.
           </p>
         </div>
       </Link>

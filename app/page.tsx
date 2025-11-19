@@ -243,7 +243,7 @@ export default function Home() {
                 href="/train"
                 className="inline-flex items-center justify-center rounded-full border border-neutral-300 px-4 py-2 text-neutral-700 hover:border-neutral-900 hover:text-neutral-900 transition-colors"
               >
-                Entrenamiento ML
+                Entrenamiento
               </Link>
             </div>
           </div>
